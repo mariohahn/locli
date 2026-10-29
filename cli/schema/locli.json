@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://locli.dev/schema/locli.json",
+  "title": "locli.json",
+  "description": "Configuration for @locli/cli: which locli project an app uses and where its text files live.",
+  "type": "object",
+  "required": ["project", "sourceLanguage"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "apiURL": {
+      "type": "string",
+      "format": "uri",
+      "default": "https://locli.dev",
+      "description": "locli server. Overridden by --api-url, LOCLI_API_URL or LOCALIZE_API_URL."
+    },
+    "project": {
+      "type": "string",
+      "pattern": "^[^\\s/]+$",
+      "description": "Project slug in locli."
+    },
+    "name": { "type": "string", "description": "Project name (used when init creates the project)." },
+    "sourceLanguage": {
+      "type": "string",
+      "description": "Source language code, e.g. en or de. Must match the project and String Catalogs."
+    },
+    "targets": {
+      "type": "array",
+      "default": [],
+      "items": { "$ref": "#/$defs/target" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "target": {
+      "type": "object",
+      "required": ["platform", "format", "path"],
+      "properties": {
+        "platform": { "enum": ["ios", "android", "web", "backend"] },
+        "format": { "enum": ["xcstrings", "android-xml", "json"] },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Relative to locli.json. xcstrings: the catalog file. android-xml: the res directory. json: a file pattern with {locale}, e.g. messages/{locale}.json."
+        },
+        "file": { "type": "string", "description": "android-xml: resource file name inside values*/ (default strings.xml)." },
+        "keyPrefix": { "type": "string", "description": "json: prefix added to keys in locli (e.g. an i18next namespace) and stripped on pull." }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        { "if": { "properties": { "platform": { "const": "ios" } } }, "then": { "properties": { "format": { "const": "xcstrings" } } } },
+        { "if": { "properties": { "platform": { "const": "android" } } }, "then": { "properties": { "format": { "const": "android-xml" } } } },
+        { "if": { "properties": { "platform": { "enum": ["web", "backend"] } } }, "then": { "properties": { "format": { "const": "json" }, "path": { "pattern": "\\{locale\\}" } } } }
+      ]
+    }
+  }
+}

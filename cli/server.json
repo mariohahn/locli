@@ -1,0 +1,49 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+  "name": "io.github.mariohahn/locli",
+  "title": "locli",
+  "description": "Find, add, push and pull an app's user-facing texts in locli (iOS, Android, web, backend).",
+  "websiteUrl": "https://locli.dev",
+  "repository": {
+    "url": "https://github.com/mariohahn/locli",
+    "source": "github",
+    "subfolder": "cli"
+  },
+  "version": "0.1.3",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "@locli/cli",
+      "version": "0.1.3",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp"
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "LOCLI_TOKEN",
+          "description": "locli API token (CI). Locally, run `npx @locli/cli login` instead.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "LOCLI_CONFIG",
+          "description": "Path to locli.json (default: nearest locli.json from the working directory).",
+          "isRequired": false
+        },
+        {
+          "name": "LOCLI_API_URL",
+          "description": "locli server (default: https://locli.dev).",
+          "isRequired": false
+        }
+      ]
+    }
+  ]
+}

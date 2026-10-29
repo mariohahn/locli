@@ -1,0 +1,14 @@
+{
+  "name": "locli",
+  "owner": { "name": "locli", "url": "https://locli.dev" },
+  "description": "Plugins for locli, the localization backend for apps built with coding agents",
+  "plugins": [
+    {
+      "name": "locli",
+      "source": "./plugin",
+      "description": "Put an app's user-facing texts into locli: setup, push, pull and the release flow, plus the locli MCP server",
+      "category": "development",
+      "tags": ["localization", "i18n", "translations", "xcstrings", "android", "icu"]
+    }
+  ]
+}
