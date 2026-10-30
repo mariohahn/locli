@@ -240,7 +240,7 @@ Apps whose catalog is keyed by text on purpose (e.g. SwiftUI Text("…")) can pa
   }
   const tooLong = (usage?.tooLong ?? []).filter((issue) => uploading.has(`${issue.key}\u0000${issue.locale}`));
   if (tooLong.length) {
-    ctx.warn(`${plural(tooLong.length, 'text')} in your files are longer than the place they are used in:`);
+    ctx.warn(`${plural(tooLong.length, 'text')} in your files ${tooLong.length === 1 ? 'is' : 'are'} longer than the place ${tooLong.length === 1 ? 'it is' : 'they are'} used in:`);
     for (const issue of tooLong.slice(0, 20)) ctx.warn(`  ${describeTooLong(issue)}`);
     ctx.warn('Shorten them, or make the layout wrap; locli context shows every key\'s role and budget.');
   }

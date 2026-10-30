@@ -96,6 +96,9 @@ test('context finds each key\'s role on iOS, Android, web and backend', async ()
   await context(text, {});
   assert.match(text.output.join('\n'), /editor_save +toolbar item ≤ 12 +ios\/Editor\/EditorView\.swift:7/);
   assert.match(text.output.join('\n'), /3 translations longer than the place they are used in/);
+  const one = testContext({ cwd: root });
+  await context(one, { key: 'editor_save' });
+  assert.match(one.output.join('\n'), /1 translation longer than the place it is used in/);
   const tool = await callTool('locli_context', { key: 'editor' }, { cwd: root });
   assert.deepEqual(JSON.parse(tool.content[0].text).keys.map((k) => k.key), ['editor_delete_a11y', 'editor_save', 'editor_title']);
 });

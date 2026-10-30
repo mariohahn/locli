@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="300" viewBox="0 0 860 300" role="img" aria-label="locli context: cart_checkout is a toolbar item of about 12 characters; the German translation has 28 and is flagged">
+  <style>
+    text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 14px; fill: #d4d7dd; white-space: pre; }
+    .dim { fill: #8b919c; }
+    .cmd { fill: #ffffff; font-weight: 700; }
+    .key { fill: #ffb27a; }
+    .role { fill: #7fd1a8; }
+    .warn { fill: #ff7a59; font-weight: 700; }
+  </style>
+  <rect width="860" height="300" rx="14" fill="#16181c"/>
+  <circle cx="24" cy="22" r="6" fill="#ff5f57"/><circle cx="44" cy="22" r="6" fill="#febc2e"/><circle cx="64" cy="22" r="6" fill="#28c840"/>
+  <text x="430" y="27" text-anchor="middle" class="dim">shoply — locli context</text>
+  <text x="24" y="70"><tspan class="dim">$</tspan> <tspan class="cmd">npx @locli/cli context</tspan></text>
+  <text x="24" y="102">3 keys of 3 found in the code:</text>
+  <text x="24" y="126">  <tspan class="key">cart_checkout  </tspan>  <tspan class="role">toolbar item ≤ 12</tspan>     <tspan class="dim">App/CartView.swift:7</tspan></text>
+  <text x="24" y="150">  <tspan class="key">cart_empty_hint</tspan>  <tspan class="role">text</tspan>                  <tspan class="dim">App/CartView.swift:3</tspan></text>
+  <text x="24" y="174">  <tspan class="key">cart_title     </tspan>  <tspan class="role">screen title ≤ 24</tspan>     <tspan class="dim">App/CartView.swift:4</tspan></text>
+  <text x="24" y="214" class="warn">1 translation longer than the place it is used in:</text>
+  <text x="24" y="238">  <tspan class="key">cart_checkout</tspan> (de): 28 characters, a toolbar item fits about 12:</text>
+  <text x="24" y="262">  “Zur Kasse gehen und bezahlen”  <tspan class="dim">→ your agent shortens it before the release</tspan></text>
+</svg>

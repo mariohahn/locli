@@ -79,7 +79,7 @@ export async function context(ctx, flags) {
     ctx.out(`${plural(report.unused.length, 'key')} not found in the code (unused, or the key is built at runtime): ${report.unused.slice(0, 20).join(', ')}${report.unused.length > 20 ? ' …' : ''}`);
   }
   if (report.tooLong.length) {
-    ctx.out(`${plural(report.tooLong.length, 'translation')} longer than the place they are used in:`);
+    ctx.out(`${plural(report.tooLong.length, 'translation')} longer than the place ${report.tooLong.length === 1 ? 'it is' : 'they are'} used in:`);
     for (const issue of report.tooLong.slice(0, 30)) ctx.out(`  ${describeTooLong(issue)}`);
   } else if (report.keys.some((k) => k.maxChars)) ctx.out('Every translation fits its length budget.');
   return report;
