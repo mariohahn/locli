@@ -1,0 +1,14 @@
+{
+  "name": "@locli/cli",
+  "version": "0.1.5",
+  "private": true,
+  "description": "The locli CLI and MCP server, bundled with the plugin; the same code as @locli/cli on npm.",
+  "type": "module",
+  "bin": {
+    "locli": "bin/locli.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}
