@@ -15,7 +15,7 @@ until a person approves the release.
 3. **The agent translates** with your project's tone, glossary and the place each text appears.
    `locli context` finds that place in the code: a toolbar item fits about 12 characters, a
    screen title about 24. Placeholders, plurals and glossary terms are checked on every upload.
-4. **You approve a release** in the locli web app, per language, with a diff of what changed.
+4. **You approve a release** in the locli web app: each changed text with a diff, then the release as a whole.
 5. **`locli pull`** writes exactly that release into the app. Builds stay reproducible.
 
 Works with Claude Code, Cursor, Codex and any MCP client; no lock-in to one agent.
