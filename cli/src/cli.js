@@ -21,8 +21,8 @@ and waits until you approve. The token is stored in $XDG_CONFIG_HOME/locli/crede
   whoami: { summary: 'Show the signed-in account', usage: 'locli whoami [--api-url URL] [--json]', options: { json: 'boolean' }, details: '' },
   init: {
     summary: 'Detect text files, write locli.json and agent instructions, create the project',
-    usage: 'locli init [--name NAME] [--slug SLUG] [--source LANG] [--target platform:format:path]… [--yes] [--no-agent-files]',
-    options: { name: 'string', slug: 'string', source: 'string', target: 'list', yes: 'boolean', y: 'boolean', 'no-agent-files': 'boolean' },
+    usage: 'locli init [--name NAME] [--slug SLUG] [--source LANG] [--target platform:format:path]… [--icon FILE | --no-icon] [--yes] [--no-agent-files]',
+    options: { name: 'string', slug: 'string', source: 'string', target: 'list', icon: 'string', 'no-icon': 'boolean', yes: 'boolean', y: 'boolean', 'no-agent-files': 'boolean' },
     details: `Non-interactive unless run in a terminal without --yes. Detects *.xcstrings (ios),
 **/src/main/res/values/strings.xml (android) and messages|locales|i18n|lang/{locale}.json (web).
 --target overrides detection (repeatable), e.g. web:json:messages/{locale}.json,
@@ -30,6 +30,8 @@ android:android-xml:app/src/main/res, ios:xcstrings:App/Localizable.xcstrings,
 backend:json:resources/i18n/{locale}.json.
 Writes AGENTS.md (block between <!-- locli:start --> and <!-- locli:end -->), adds @AGENTS.md
 to an existing CLAUDE.md and installs the skill to .agents/skills/locli (+ .claude/skills/locli).
+A project without an icon gets the app's own: the iOS AppIcon, the Android launcher icon or the
+web app icon (scaled to 128 px with sips on macOS). --icon FILE sets or replaces it, --no-icon skips it.
 Safe to rerun.`,
   },
   push: {
@@ -72,11 +74,23 @@ Lists every translation that doesn't follow the glossary.
 "keep": true }, { "term": "Release", "translations": { "de": "Release" } }] }); the output of
 --json is accepted too. Needs the editor role or a write token.`,
   },
+  context: {
+    summary: 'Show where each key is used in the code, as what, and translations that are too long',
+    usage: 'locli context [--key KEY_OR_AREA] [--target platform] [--json]',
+    options: { key: 'string', target: 'string', json: 'boolean' },
+    details: `Finds every key of locli.json's files in the code (Swift, Kotlin/Java, Android layouts, TS/JS,
+Vue, Python, Ruby, Go, PHP …) and the role it has there: toolbar item, tab, button, menu item, screen
+title, form field, push notification, email, alert, error message, accessibility label or text.
+Constrained roles get a length budget (a toolbar item about 12 characters, at least 1.3 × the source);
+translations in the files that exceed it are listed. Read it before translating. push uses the same
+scan: it warns about too-long texts and writes "Used as …" context to keys nobody described yet.
+Local only; needs no login.`,
+  },
   mcp: {
     summary: 'Run the MCP server on stdio (for coding agents)',
     usage: 'locli mcp',
     options: {},
-    details: `Tools: locli_status, locli_areas, locli_guide, locli_find_texts, locli_add_texts, locli_push, locli_pull.
+    details: `Tools: locli_status, locli_areas, locli_guide, locli_context, locli_find_texts, locli_add_texts, locli_push, locli_pull.
 Uses locli.json from the working directory (or LOCLI_CONFIG). Example client config:
   { "command": "npx", "args": ["-y", "@locli/cli", "mcp"] }`,
   },
@@ -148,6 +162,7 @@ export async function main(argv, overrides = {}) {
     if (flags.y) flags.yes = true;
     if (flags.noBrowser) flags.browser = false;
     if (flags.noAgentFiles) flags.agentFiles = false;
+    if (flags.noIcon) flags.icon = false;
     switch (command) {
       case 'login': await (await import('./commands/login.js')).login(ctx, flags); break;
       case 'logout': await (await import('./commands/login.js')).logout(ctx, flags); break;
@@ -158,6 +173,7 @@ export async function main(argv, overrides = {}) {
       case 'status': await (await import('./commands/status.js')).status(ctx, flags); break;
       case 'areas': await (await import('./commands/areas.js')).areas(ctx, flags); break;
       case 'guide': await (await import('./commands/guide.js')).guide(ctx, flags); break;
+      case 'context': await (await import('./commands/context.js')).context(ctx, flags); break;
       case 'mcp': await (await import('./mcp.js')).serve(overrides); break;
       default: break;
     }

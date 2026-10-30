@@ -7,6 +7,7 @@ import { pull } from './commands/pull.js';
 import { findTexts, addTexts } from './commands/texts.js';
 import { guide } from './commands/guide.js';
 import { areas } from './commands/areas.js';
+import { context } from './commands/context.js';
 import { VERSION } from './version.js';
 
 export const PROTOCOL_VERSION = '2025-06-18';
@@ -15,6 +16,7 @@ const SUPPORTED = [PROTOCOL_VERSION, '2025-03-26', '2024-11-05'];
 const INSTRUCTIONS = `locli manages this app's user-facing texts. When you build a feature, call locli_areas with the feature's name first: it tells you the existing area to use
 (or the new one to start) so its keys group together. Before adding a text, call locli_find_texts to reuse a key with the same meaning.
 Before translating, call locli_guide: follow its tone per language and glossary, and fix every glossary issue it lists.
+Call locli_context too: it says where each key is used (toolbar item, button, title, push notification …) and how long its text may be.
 New texts: add them to the app's source-language file and call locli_push (or call locli_add_texts directly). Existing texts are never overwritten;
 they are changed in locli. New texts reach the app only after a project owner approves a release; then call locli_pull. Never approve releases yourself.
 If a tool says "Not logged in", ask the user to run \`npx @locli/cli login\`.`;
@@ -41,6 +43,13 @@ export const TOOLS = [
     title: 'Translation guide',
     description: 'The project\'s translation guide: tone and form of address per language, glossary terms with their required translation, terms that stay as written (keep), and every current translation that breaks the glossary. Read it before translating. Read-only.',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    annotations: { readOnlyHint: true },
+  },
+  {
+    name: 'locli_context',
+    title: 'Where texts are used',
+    description: 'Scans the app\'s code for every key in locli.json\'s files: where it is used (file:line), as what (toolbar item, tab, button, menu item, screen title, form field, push notification, email, alert, error message, accessibility label, text) and its length budget in characters. Lists translations in the files that exceed their budget and keys not found in the code. Call it before translating and fix every too-long text (shorter wording, or a layout that wraps). Local, read-only.',
+    inputSchema: { type: 'object', properties: { key: { type: 'string', description: 'Only this key, or every key of this area (e.g. "auth").' }, target: { type: 'string', description: 'Only this platform.' } }, additionalProperties: false },
     annotations: { readOnlyHint: true },
   },
   {
@@ -128,6 +137,7 @@ export async function callTool(name, args = {}, overrides = {}) {
     let structured;
     if (name === 'locli_status') structured = await status(ctx, { json: true });
     else if (name === 'locli_guide') structured = await guide(ctx, { json: true });
+    else if (name === 'locli_context') structured = await context(ctx, { json: true, key: args.key, target: args.target });
     else if (name === 'locli_areas') structured = await areas(ctx, { json: true, feature: args.feature });
     else if (name === 'locli_find_texts') {
       const result = await findTexts(ctx, { query: args.query, locale: args.locale });
@@ -147,7 +157,7 @@ export async function callTool(name, args = {}, overrides = {}) {
     } else if (name === 'locli_push') structured = await push(ctx, { dryRun: args.dryRun, target: args.target });
     else if (name === 'locli_pull') structured = await pull(ctx, { draft: args.draft, target: args.target });
     else return { content: [{ type: 'text', text: `Unknown tool ${name}` }], isError: true };
-    const text = name === 'locli_status' || name === 'locli_guide' || name === 'locli_areas' ? JSON.stringify(structured, null, 2) : lines.join('\n') || 'Done.';
+    const text = name === 'locli_status' || name === 'locli_guide' || name === 'locli_areas' || name === 'locli_context' ? JSON.stringify(structured, null, 2) : lines.join('\n') || 'Done.';
     return { content: [{ type: 'text', text }], isError: false };
   } catch (error) {
     lines.push(/** @type {Error} */ (error).message);

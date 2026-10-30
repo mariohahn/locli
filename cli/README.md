@@ -65,11 +65,12 @@ The JSON schema is shipped as `@locli/cli/schema/locli.json`.
 | Command | Effect |
 | --- | --- |
 | `login [--no-browser]` / `logout` / `whoami [--json]` | Approve the CLI in the browser; revoke the token; show the account |
-| `init [--name] [--slug] [--source LANG] [--target platform:format:path]… [--yes] [--no-agent-files]` | Detect catalogs, write the config and agent files, create the project |
+| `init [--name] [--slug] [--source LANG] [--target platform:format:path]… [--icon FILE \| --no-icon] [--yes] [--no-agent-files]` | Detect catalogs, write the config and agent files, create the project and give it the app's icon |
 | `push [--dry-run] [--branch B] [--target platform]` | Upload missing keys and values; never overwrites |
 | `pull [--draft] [--release NAME] [--target platform]` | Write the latest approved (or named) release |
 | `status [--json]` | Show languages, missing translations, open features, unreleased changes and glossary issues |
 | `areas [--feature NAME] [--json]` | List feature areas, or find the area a new feature's texts belong to |
+| `context [--key KEY_OR_AREA] [--json]` | Where each key is used in the code, as what (toolbar item, button, push notification …), and translations too long for it |
 | `guide [--json] [--set FILE]` | Show the translation guide (tone, glossary) and the texts that break it; `--set` replaces it |
 | `mcp` | Start the MCP server on stdio |
 
@@ -85,11 +86,12 @@ Environment variables:
 
 ## MCP server
 
-The MCP server provides seven tools:
+The MCP server provides eight tools:
 
 - `locli_status`
 - `locli_areas`
 - `locli_guide`
+- `locli_context`
 - `locli_find_texts`
 - `locli_add_texts`
 - `locli_push`

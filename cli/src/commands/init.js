@@ -10,6 +10,7 @@ import { readTarget, describeTarget } from '../targets.js';
 import { Api, NOT_LOGGED_IN } from '../http.js';
 import { findProject, projectDetail, ensurePlatforms, ensureLocales, projectURL } from '../remote.js';
 import { LocliError, slugify, normalizeLocale } from '../util.js';
+import { findAppIcon, iconDataURL } from '../icon.js';
 
 /** @param {string} dir */
 function repoRoot(dir) {
@@ -40,7 +41,7 @@ function legacyConfig(root) {
 
 /**
  * @param {import('../context.js').Context} ctx
- * @param {{ name?: string, slug?: string, source?: string, yes?: boolean, agentFiles?: boolean, target?: string[], apiUrl?: string, config?: string }} flags
+ * @param {{ name?: string, slug?: string, source?: string, yes?: boolean, agentFiles?: boolean, target?: string[], apiUrl?: string, config?: string, icon?: string | false }} flags
  */
 export async function init(ctx, flags) {
   const found = findConfig(ctx.cwd, ctx.env, flags.config);
@@ -109,9 +110,34 @@ export async function init(ctx, flags) {
     }
   }
   const { created: locales } = await ensureLocales(api, detail, [...codes]);
+  const icon = await setIcon(ctx, api, detail, root, flags.icon);
   ctx.out(`${created ? 'Created' : 'Using'} project ${detail.slug}: ${projectURL(apiURL, detail.id)}`);
   if (enabled.length) ctx.out(`Enabled platform: ${enabled.join(', ')}`);
   if (locales.length) ctx.out(`Created languages: ${locales.join(', ')}`);
   ctx.out(targets.length ? 'Next: `npx @locli/cli push` uploads the texts locli does not have yet.' : 'Next: add a text file (see above) and rerun `npx @locli/cli init`.');
-  return { file, project: detail.slug, projectID: detail.id, created, targets, enabledPlatforms: enabled, createdLocales: locales };
+  return { file, project: detail.slug, projectID: detail.id, created, targets, enabledPlatforms: enabled, createdLocales: locales, icon };
+}
+
+/**
+ * Gives a project without an icon the app's own one (or --icon FILE, which also replaces an
+ * existing icon). Never fails init: the icon is a nicety.
+ * @param {import('../context.js').Context} ctx @param {Api} api @param {any} detail @param {string} root @param {string | false | undefined} choice
+ */
+async function setIcon(ctx, api, detail, root, choice) {
+  if (choice === false || (detail.iconURL && !choice)) return null;
+  const found = choice ? { file: path.resolve(ctx.cwd, choice), platform: 'file' } : findAppIcon(root);
+  if (!found) return null;
+  // Inside the project relative, elsewhere (a downloaded --icon) the full path.
+  const inside = path.relative(ctx.cwd, found.file);
+  const relative = inside && !inside.startsWith('..') ? inside : found.file;
+  try {
+    const dataURL = iconDataURL(found.file);
+    if (!dataURL) { ctx.info(`Skipped the app icon ${relative}: too large to send unscaled (pass --icon with a PNG under 70 KB).`); return null; }
+    await api.patch(`/api/projects/${detail.id}`, { icon: dataURL });
+    ctx.out(`Set the project icon from ${relative}.`);
+    return relative;
+  } catch (error) {
+    ctx.warn(`Could not set the project icon from ${relative}: ${/** @type {Error} */ (error).message}`);
+    return null;
+  }
 }

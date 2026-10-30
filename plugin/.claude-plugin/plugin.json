@@ -1,6 +1,6 @@
 {
   "name": "locli",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Localization for apps built with coding agents: the agent pushes keys and translations, a human approves each release. iOS String Catalogs, Android strings.xml, ICU JSON.",
   "author": { "name": "locli", "url": "https://locli.dev" },
   "homepage": "https://locli.dev",

@@ -1,5 +1,7 @@
 // push: upload only what locli lacks. Existing values are never overwritten.
 import { glossaryMisses, loadGuide } from './guide.js';
+import { describeTooLong, usageReport } from './context.js';
+import { autoComment, isAutoComment } from '../usage.js';
 import { openConfig } from '../context.js';
 import { readTarget, selectTargets, describeTarget } from '../targets.js';
 import { requireProject, projectDetail, ensurePlatforms, ensureLocales, valueIndex, exportName, androidName, releasesURL, projectURL } from '../remote.js';
@@ -227,10 +229,26 @@ Apps whose catalog is keyed by text on purpose (e.g. SwiftUI Text("…")) can pa
       : 'They are uploaded as they are; fix them in locli, or next time run push --dry-run first.');
   }
 
+  // Where the keys are used decides how long their texts may be; a toolbar item has room for about 12
+  // characters. Like the glossary, this is checked on the files before anything is uploaded.
+  let usage = /** @type {ReturnType<typeof usageReport> | null} */ (null);
+  try { usage = usageReport(loaded.dir, local, config.sourceLanguage); } catch { usage = null; }
+  const uploading = new Set();
+  for (const { plan } of plans) {
+    const back = Object.fromEntries(Object.entries(plan.names).map(([from, to]) => [to, from]));
+    for (const item of plan.imports) for (const name of [...Object.keys(item.body.values ?? {}), ...Object.keys(item.body.forms ?? {})]) uploading.add(`${back[name] ?? name}\u0000${item.localeCode}`);
+  }
+  const tooLong = (usage?.tooLong ?? []).filter((issue) => uploading.has(`${issue.key}\u0000${issue.locale}`));
+  if (tooLong.length) {
+    ctx.warn(`${plural(tooLong.length, 'text')} in your files are longer than the place they are used in:`);
+    for (const issue of tooLong.slice(0, 20)) ctx.warn(`  ${describeTooLong(issue)}`);
+    ctx.warn('Shorten them, or make the layout wrap; locli context shows every key\'s role and budget.');
+  }
+
   const summary = { project: config.project, projectID: project.id, branch, dryRun: Boolean(flags.dryRun), createdKeys: 0, addedValues: 0,
     newKeys: /** @type {string[]} */ ([]), createdLocales, enabledPlatforms: flags.dryRun ? [] : missingPlatforms, assigned: 0, comments: 0,
     feature: /** @type {any} */ (null), merged: /** @type {string[]} */ ([]), waiting: /** @type {number | null} */ (null), targets: /** @type {any[]} */ ([]),
-    glossaryIssues: /** @type {number | null} */ (null), localGlossaryIssues: localIssues };
+    glossaryIssues: /** @type {number | null} */ (null), localGlossaryIssues: localIssues, tooLong };
 
   if (flags.dryRun) {
     ctx.out(`Dry run for ${config.project} on ${api.baseURL}${branch ? ` (branch ${branch})` : ''}; nothing is written.`);
@@ -247,6 +265,12 @@ Apps whose catalog is keyed by text on purpose (e.g. SwiftUI Text("…")) can pa
       const detailText = Object.entries(perLocale).map(([c, n]) => `${c}: ${n}`).join(', ');
       ctx.out(`${describeTarget(target)}: would create ${plural(plan.newKeys.length, 'key')} and add ${plural(/** @type {number} */ (total), 'text')}${detailText ? ` (${detailText})` : ''}${plan.assign.length ? `; assign ${platformOf(target)} to ${plural(plan.assign.length, 'existing key')}` : ''}.`);
       if (plan.newKeys.length) ctx.out(`  new keys: ${plan.newKeys.slice(0, 30).join(', ')}${plan.newKeys.length > 30 ? ' …' : ''}`);
+    }
+    const described = new Set(local.flatMap(({ texts }) => Object.keys(texts.comments)));
+    const roles = (usage?.keys ?? []).filter((k) => summary.newKeys.includes(k.key) && !described.has(k.key) && autoComment(k));
+    if (roles.length) {
+      ctx.out(`Context from the code for ${plural(roles.length, 'new key')}:`);
+      for (const k of roles.slice(0, 30)) ctx.out(`  ${k.key}: ${autoComment(k)} (${k.uses[0].file}:${k.uses[0].line})`);
     }
     return summary;
   }
@@ -306,6 +330,15 @@ Apps whose catalog is keyed by text on purpose (e.g. SwiftUI Text("…")) can pa
       if (!comment || comment === 'Imported' || !key || !['', 'Imported'].includes((key.comment ?? '').trim())) continue;
       patches.set(key.key, { ...patches.get(key.key), comment });
     }
+    // Keys nobody described get their role from the code; a later push refreshes only that generated text.
+    for (const context of usage?.keys ?? []) {
+      const comment = autoComment(context);
+      const key = remoteKeys.get(plan.names[context.key] ?? context.key);
+      if (!comment || !key || texts.comments[context.key] || patches.get(key.key)?.comment) continue;
+      const current = (key.comment ?? '').trim();
+      if (current === comment || !(['', 'Imported'].includes(current) || isAutoComment(current))) continue;
+      patches.set(key.key, { ...patches.get(key.key), comment });
+    }
     if (target.format !== 'xcstrings') {
       for (const name of new Set(Object.values(plan.names))) {
         const key = remoteKeys.get(name);
@@ -342,7 +375,7 @@ Apps whose catalog is keyed by text on purpose (e.g. SwiftUI Text("…")) can pa
   } else if (branch) ctx.out(`Branch: ${branch}`);
   for (const title of summary.merged) ctx.out(`Merged into ${branch}: feature "${title}"`);
   if (summary.assigned) ctx.out(`Assigned the platform to ${plural(summary.assigned, 'existing key')}.`);
-  if (summary.comments) ctx.out(`Added context to ${plural(summary.comments, 'key')} from file comments.`);
+  if (summary.comments) ctx.out(`Added context to ${plural(summary.comments, 'key')} from file comments and the code.`);
   const guide = flags.dryRun ? null : await loadGuide(api, project.id);
   summary.glossaryIssues = guide?.issues.length ?? null;
   if (guide?.issues.length && !localIssues.length) {

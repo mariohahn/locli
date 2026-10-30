@@ -132,7 +132,7 @@ export async function fakeServer(seed = {}) {
     if (!match || !p || match[1] !== p.id) return send(404, { error: true, reason: 'Project not found.' });
     const sub = `${req.method} ${match[2] ?? ''}`;
     if (sub === 'GET ') return send(200, detail(p));
-    if (sub === 'PATCH ') { if (body.platforms) p.platforms = body.platforms; return send(200, { ...p, role: 'owner' }); }
+    if (sub === 'PATCH ') { if (body.platforms) p.platforms = body.platforms; if (body.icon !== undefined) { p.iconData = body.icon || null; p.iconURL = body.icon ? `/api/projects/${p.id}/icon?v=${body.icon.length}` : null; } return send(200, { ...p, role: 'owner' }); }
     if (sub === 'POST /locales') { const l = { id: randomUUID(), code: body.code.toLowerCase(), name: body.name, isBase: false }; state.locales.push(l); return send(200, l); }
     if (sub === 'POST /translations/import') { const [status, payload] = importValues(p, body); return send(status, payload); }
     if (sub === 'POST /keys') {

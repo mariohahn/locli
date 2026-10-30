@@ -14,9 +14,11 @@ npx @locli/cli init
 `AGENTS.md` (between `<!-- locli:start -->` and `<!-- locli:end -->`), adds `@AGENTS.md`
 to an existing `CLAUDE.md`, installs this skill to `.agents/skills/locli/` (linked from
 `.claude/skills/locli/`) and, when logged in, creates the project, its languages and
-platforms. It is safe to rerun. Options: `--name`, `--slug`, `--source LANG`,
-`--target platform:format:path` (repeatable, overrides detection), `--yes`,
-`--no-agent-files`.
+platforms. A project without an icon gets the app's own (iOS AppIcon, Android launcher
+icon or web `apple-touch-icon`/`icon.png`, scaled to 128 px with `sips` on macOS); an icon
+someone chose in locli stays. It is safe to rerun. Options: `--name`, `--slug`, `--source LANG`,
+`--target platform:format:path` (repeatable, overrides detection), `--icon FILE` (sets or
+replaces the icon), `--no-icon`, `--yes`, `--no-agent-files`.
 
 Detection: `*.xcstrings` (ios), `**/src/main/res/values/strings.xml` (android),
 `messages|locales|i18n|lang/{locale}.json` (web). If the app has no catalog yet, create
@@ -62,6 +64,7 @@ Never read the credentials file, print tokens or commit them. `whoami` shows the
 | `status [--json]` | Languages, missing translations, open features, unreleased changes, glossary issues. |
 | `areas [--feature NAME] [--json]` | Feature areas with key counts; with `--feature` the area to use or start. |
 | `guide [--json] [--set FILE]` | Translation guide (tone, glossary) and the texts that break it; `--set` replaces it. |
+| `context [--key KEY_OR_AREA] [--target P] [--json]` | Where each key is used in the code on every platform, its role (toolbar item, button, push notification …) and length budget, translations that are too long, keys not found. Local, no login. |
 | `mcp` | MCP server on stdio. |
 
 Every command takes `--api-url`, `--config FILE` (or `LOCLI_CONFIG`) and `--help`.
@@ -84,6 +87,9 @@ Exit codes: 0 ok, 1 error, 2 usage error.
   guide's glossary and warns about every text that drops a term. Fix them in the files first:
   a text in locli is never overwritten. Warnings never block a push; `locli guide` lists the
   ones already in locli.
+- It scans the code like `locli context` and warns about texts longer than their role allows
+  (a toolbar item about 12 characters). Keys without a comment get the role as their context
+  ("Used as a toolbar item: …"); a later push refreshes only such generated comments.
 - A platform that is not enabled for the project needs an owner; the CLI says so.
 - Android: string arrays are created as array keys. Strings with markup (`<b>`, `<a>`)
   are skipped with a warning.
@@ -113,7 +119,8 @@ in the languages concerned. Problems: [errors](errors.md).
 
 `npx -y @locli/cli mcp` exposes `locli_status`, `locli_areas` (the area a feature's
 keys belong to), `locli_guide` (tone, glossary and its
-issues; read before translating), `locli_find_texts` (search keys and
+issues; read before translating), `locli_context` (where each key is used, its role and
+length budget, too-long translations), `locli_find_texts` (search keys and
 values before creating one), `locli_add_texts` (create keys with values or plural
 forms), `locli_push` and `locli_pull`. It reads `locli.json` from the working directory.
 Claude Code: `claude mcp add --scope project locli -- npx -y @locli/cli mcp`.

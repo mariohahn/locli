@@ -114,3 +114,49 @@ test('in a monorepo, --target paths count from where init runs and are stored fr
   const config = JSON.parse(fs.readFileSync(path.join(fs.realpathSync(root), 'locli.json'), 'utf8'));
   assert.deepEqual(config.targets, [{ platform: 'web', format: 'json', path: 'web/src/messages/{locale}.json' }]);
 });
+
+// A 1×1 PNG: small enough to send as it is where sips is missing.
+const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==', 'base64');
+
+test('the app icon comes from the iOS AppIcon set, else the Android launcher icon, else the web icon', async () => {
+  const { findAppIcon } = await import('../src/icon.js');
+  const root = tempDir();
+  const put = (/** @type {string} */ file) => { fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true }); fs.writeFileSync(path.join(root, file), PNG); };
+  put('web/public/favicon.png');
+  put('web/public/apple-touch-icon.png');
+  assert.equal(path.relative(root, findAppIcon(root).file), 'web/public/apple-touch-icon.png');
+  put('android/app/src/main/res/mipmap-hdpi/ic_launcher.png');
+  put('android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp');
+  assert.equal(path.relative(root, findAppIcon(root).file), 'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp');
+  const set = 'ios/App/Assets.xcassets/AppIcon.appiconset';
+  put(`${set}/icon-1024.png`);
+  put(`${set}/icon-1024-dark.png`);
+  put(`${set}/icon-60@3x.png`);
+  writeFiles(root, { [`${set}/Contents.json`]: { images: [
+    { filename: 'icon-60@3x.png', idiom: 'iphone', scale: '3x', size: '60x60' },
+    { filename: 'icon-1024-dark.png', idiom: 'universal', platform: 'ios', size: '1024x1024', appearances: [{ appearance: 'luminosity', value: 'dark' }] },
+    { filename: 'icon-1024.png', idiom: 'universal', platform: 'ios', size: '1024x1024' },
+  ] } });
+  assert.deepEqual(findAppIcon(root), { file: path.join(root, set, 'icon-1024.png'), platform: 'ios' });
+});
+
+test('init sets the app icon on a project without one and leaves a chosen icon alone', async () => {
+  const server = await fakeServer();
+  try {
+    const root = tempDir();
+    writeFiles(root, { 'messages/en.json': { hello: 'Hello' } });
+    fs.mkdirSync(path.join(root, 'public'));
+    fs.writeFileSync(path.join(root, 'public/apple-touch-icon.png'), PNG);
+    const ctx = testContext({ cwd: root, env: testEnv(server.url) });
+    const result = await init(ctx, { agentFiles: false });
+    assert.equal(result.icon, 'public/apple-touch-icon.png');
+    assert.match(server.state.projects[0].iconData, /^data:image\/png;base64,/);
+    assert.match(ctx.output.join('\n'), /Set the project icon from public\/apple-touch-icon\.png/);
+    // Someone picked another icon in locli: a rerun keeps it.
+    server.state.projects[0].iconURL = '/api/projects/x/icon?v=chosen';
+    const patches = server.calls('PATCH', '/api/projects/').length;
+    const again = await init(testContext({ cwd: root, env: testEnv(server.url) }), { agentFiles: false });
+    assert.equal(again.icon, null);
+    assert.equal(server.calls('PATCH', '/api/projects/').length, patches);
+  } finally { await server.close(); }
+});

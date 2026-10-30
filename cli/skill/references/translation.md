@@ -20,7 +20,25 @@ When you decide on a recurring term yourself, propose it to the user and add it 
 `locli guide --json > guide.json`, edit, `locli guide --set guide.json` (editor role or
 write token). Never remove or change someone else's term without asking.
 
-## 2. Translate from the source
+## 2. Know where each text is used
+
+`npx @locli/cli context` (MCP: `locli_context`, `--key auth` for one area) scans the code on
+every platform (Swift, Kotlin/Java, Android layouts, TS/JS, Python, Ruby, Go …) and says for
+each key where it is used and as what: toolbar item, tab, button, menu item, screen title, form
+field, push notification, email, alert, error message, accessibility label or text. Roles with
+little room get a length budget in characters (a toolbar item about 12, never less than 1.3 ×
+the source) and the command lists every translation in the files that exceeds it.
+
+- Write each text for its role: a toolbar item is one or two words, a title has no period, an
+  accessibility label is read aloud and describes instead of abbreviating, a push notification
+  is cut after about two lines.
+- `push` writes the role as the comment ("Used as a toolbar item: …") for keys nobody described,
+  so translators in the editor see it too. A comment someone wrote always wins.
+- A key it can't find is unused or built at runtime; look at the code before translating it.
+- The budget is a heuristic. When a longer text reads better and the layout can wrap (or you
+  make it wrap), that is fine; check it in layer 4.
+
+## 3. Translate from the source
 
 - Translate from the source language (`sourceLanguage` in `locli.json`), never from
   another translation, and use the key's comment for context (where it appears, what each
@@ -29,17 +47,18 @@ write token). Never remove or change someone else's term without asking.
 - Keep placeholders exactly ([placeholder rules](../SKILL.md#rules-that-always-apply)),
   keep plural categories complete for the language ([plurals](plurals.md)), keep
   keys, URLs, markup and the glossary's *keep* terms untouched.
-- Stay within the length the UI allows: buttons, tabs and store fields
-  ([store listings](store-listings.md)) are short; when the source is short, the
+- Stay within the length the UI allows (`locli context`): toolbar items, tabs, buttons and
+  store fields ([store listings](store-listings.md)) are short; when the source is short, the
   translation is too.
 - Work in batches of about 50 texts per language, so each batch can be checked.
 
-## 3. Check in four layers
+## 4. Check in four layers
 
 Report the result of each layer to the user; don't skip one silently.
 
 1. **Mechanical.** Run `npx @locli/cli push --dry-run` first: it checks the files against
-   the glossary before anything is uploaded. Fix every warning in the files, because once a
+   the glossary and the length budget of each key's role before anything is uploaded. Fix
+   every warning in the files, because once a
    text is in locli `push` never overwrites it. Then `push` validates placeholders and plural
    forms; a 422 means the text is wrong ([errors](errors.md)). Build the app's catalogs
    (Xcode, Gradle, the web build) so a broken file fails now.
@@ -60,7 +79,7 @@ Report the result of each layer to the user; don't skip one silently.
    (often German or Finnish) and in a right-to-left language if the app has one. Look for
    wrapping, truncation and cut-off buttons; shorten in locli where needed.
 
-## 4. Hand over
+## 5. Hand over
 
 `npx @locli/cli status` shows what waits for a release. Tell the user which languages
 you translated, how many texts, what each layer found and fixed, and which texts you were

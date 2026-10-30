@@ -23,8 +23,10 @@ source language \`${config.sourceLanguage}\`). Text files: ${files}. Config: \`l
    the same meaning (\`locli_find_texts\`). Add new keys to the source-language file with a comment
    saying where the text appears and what each placeholder holds.
 2. Translating: read \`npx @locli/cli guide\` (MCP \`locli_guide\`) first and follow its tone and
-   glossary; add every language of the project, then check them as the locli skill describes.
-3. Run \`npx @locli/cli push --dry-run\`, fix the glossary warnings in your files, then
+   glossary, and \`npx @locli/cli context\` (MCP \`locli_context\`): where each key is used (toolbar
+   item, button, push notification …) and how many characters fit there. Add every language of the
+   project, then check them as the locli skill describes.
+3. Run \`npx @locli/cli push --dry-run\`, fix the glossary and length warnings in your files, then
    \`npx @locli/cli push\` from your working branch. It only adds what locli lacks and never
    overwrites a text once it is there. Tell the user how many texts wait for a release; a
    project owner approves releases in locli. Agents never approve or publish releases.

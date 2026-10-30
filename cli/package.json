@@ -1,6 +1,6 @@
 {
   "name": "@locli/cli",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Put your app's user-facing texts into locli: push new texts, pull approved releases. Agent-first, any stack (iOS String Catalogs, Android XML, web/backend JSON), with an MCP server.",
   "mcpName": "io.github.mariohahn/locli",
   "type": "module",

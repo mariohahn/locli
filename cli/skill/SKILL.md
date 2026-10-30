@@ -20,7 +20,7 @@ here, and `@locli/cli` ships a generated copy named `locli` (installed by `init`
    `npx @locli/cli init` ([CLI](references/cli.md)).
 2. Use the app's existing workflow and only the commands in [CLI](references/cli.md).
    With the MCP server connected, prefer its tools (`locli_find_texts`,
-   `locli_add_texts`, `locli_push`, `locli_pull`, `locli_status`, `locli_areas`, `locli_guide`).
+   `locli_add_texts`, `locli_push`, `locli_pull`, `locli_status`, `locli_areas`, `locli_guide`, `locli_context`).
 3. Authentication is the user's: on "Not logged in" ask them to run
    `npx @locli/cli login` (browser approval); CI provides `LOCLI_TOKEN`.
    Never read credential files, print tokens or store them in code or Git.
@@ -53,7 +53,8 @@ add each text as below with that prefix.
 
 **Translate texts or add a language**: read the project's guide first
 (`npx @locli/cli guide`, MCP `locli_guide`: tone per language, glossary, terms that stay
-as written), then follow [translation](references/translation.md): translate from the
+as written) and where each key is used (`npx @locli/cli context`, MCP `locli_context`: toolbar
+item, button, title, push notification … and its length budget), then follow [translation](references/translation.md): translate from the
 source, check mechanically, back-translate, have another model review, look at the UI.
 
 **Fix an error**: [errors](references/errors.md) lists every CLI/API message with cause and fix.

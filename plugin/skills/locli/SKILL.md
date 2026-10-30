@@ -23,7 +23,8 @@ for a new feature run `npx @locli/cli areas --feature <name>` and use the area i
 the feature area with a comment; `npx @locli/cli push` (never overwrites existing
 texts); tell the user how many texts wait for a release; after they approve it,
 `npx @locli/cli pull`. Before translating, read `npx @locli/cli guide` (tone,
-glossary) and follow it. The MCP tools `locli_areas`, `locli_guide`, `locli_find_texts`,
+glossary) and `npx @locli/cli context` (where each key is used and how long it may be) and
+follow them. The MCP tools `locli_areas`, `locli_guide`, `locli_context`, `locli_find_texts`,
 `locli_add_texts`, `locli_status`, `locli_push` and `locli_pull` do the same from
 inside the session.
 

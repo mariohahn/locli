@@ -52,7 +52,7 @@ test('MCP server: initialize, tools/list and tools/call over stdio', async () =>
     assert.deepEqual((await mcp.request('ping', {})).result, {});
 
     const list = await mcp.request('tools/list', {});
-    assert.deepEqual(list.result.tools.map((t) => t.name), ['locli_status', 'locli_areas', 'locli_guide', 'locli_find_texts', 'locli_add_texts', 'locli_push', 'locli_pull']);
+    assert.deepEqual(list.result.tools.map((t) => t.name), ['locli_status', 'locli_areas', 'locli_guide', 'locli_context', 'locli_find_texts', 'locli_add_texts', 'locli_push', 'locli_pull']);
     for (const tool of list.result.tools) assert.equal(tool.inputSchema.type, 'object');
 
     const found = await mcp.request('tools/call', { name: 'locli_find_texts', arguments: { query: 'sign in' } });
