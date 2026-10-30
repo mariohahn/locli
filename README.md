@@ -39,6 +39,15 @@ Or ask your coding agent: *"Set up locli for this app's texts."* (docs: https://
 Sign in once with `npx @locli/cli login` (it opens the browser to approve the CLI). CI uses
 a project token in `LOCLI_TOKEN`.
 
+## Data
+
+The CLI and MCP server talk to one service: the locli server in `locli.json` (`apiURL`,
+default https://locli.dev, hosted in Frankfurt). They send the app's texts, their keys,
+comments and plural forms, and short usage notes such as "used as a toolbar item"; they do not
+send source code or file contents. Texts stay in the locli project until it is deleted. The
+sign-in token is stored in `~/.config/locli/credentials.json` (or `$XDG_CONFIG_HOME`), readable
+only by you. Privacy policy: https://locli.dev/app/privacy/
+
 ## Issues
 
 Bugs and ideas: [open an issue](https://github.com/mariohahn/locli/issues). The locli server and
