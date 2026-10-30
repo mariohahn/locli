@@ -13,6 +13,7 @@ delete placeholders to silence a check, or approve releases on the user's behalf
 | `The login code expired. Run npx @locli/cli login again.` | The browser approval did not happen within the code's lifetime (`expired_token`). | The user runs `login` again. |
 | `The login was denied in the browser.` | The user clicked deny (`access_denied`). | Ask the user whether to log in; do not retry on your own. |
 | Older CLI: `Not logged in to <server>; run login or set LOCALIZE_TOKEN` / `Unauthorized at <server>…` | Same causes with the Python wrapper. | The user runs the wrapper's `login`, or CI provides `LOCALIZE_TOKEN`. |
+| `Unsupported String Catalog version "…" (locli reads 1.x)` | The `.xcstrings` file has a version locli doesn't know. Xcode writes `1.0`, current Xcode `1.1`; CLI 0.1.4 and older only read `1.0`. | Update to the latest `@locli/cli`. Don't edit `version` by hand: Xcode writes it back, and `pull` keeps the file's version. |
 | `Cannot reach <server> …` | Wrong API URL or no network. | Check `--api-url`, `LOCLI_API_URL`, `apiURL` in `locli.json`. |
 | `No locli.json found …` / `locli.json: … is required` | Not set up, or invalid config. | Run `npx @locli/cli init` in the repository root, or fix the field named. |
 | `403 … Your role (viewer\|editor) does not allow this action.` | Role too low: `pull` needs viewer, `push`/`init` need editor, releases need owner. | Ask a project owner to change the role. |

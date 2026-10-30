@@ -73,8 +73,12 @@ export function localizationUnits(localization, context) {
 /** @param {unknown} catalog */
 function validateCatalog(catalog) {
   const c = /** @type {any} */ (catalog);
-  if (!isObject(c) || !isObject(c.strings) || c.version !== '1.0' || typeof c.sourceLanguage !== 'string' || !c.sourceLanguage.trim()) {
-    throw new LocliError('Invalid String Catalog (requires version 1.0, sourceLanguage and a strings object)');
+  if (!isObject(c) || !isObject(c.strings) || typeof c.sourceLanguage !== 'string' || !c.sourceLanguage.trim()) {
+    throw new LocliError('Invalid String Catalog (requires version, sourceLanguage and a strings object)');
+  }
+  // Xcode writes 1.0 or, since Xcode 26, 1.1; a new major version could change the format.
+  if (typeof c.version !== 'string' || !/^1\.\d+$/.test(c.version)) {
+    throw new LocliError(`Unsupported String Catalog version ${JSON.stringify(c.version ?? null)} (locli reads 1.x)`);
   }
 }
 

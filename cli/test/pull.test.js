@@ -61,6 +61,21 @@ test('pull pins the latest release and writes iOS, Android and web files', async
   } finally { await server.close(); }
 });
 
+test('pull reads a version 1.1 catalog from current Xcode and keeps its version', async () => {
+  const server = await fakeServer({ slug: 'app', releases: ['1.0'], exports });
+  try {
+    const root = tempDir();
+    writeFiles(root, {
+      'locli.json': { project: 'app', sourceLanguage: 'en', targets: [{ platform: 'ios', format: 'xcstrings', path: 'Localizable.xcstrings' }] },
+      'Localizable.xcstrings': { sourceLanguage: 'en', version: '1.1', strings: { local_only: { localizations: { en: unit('Mine') } } } },
+    });
+    await pull(testContext({ cwd: root, env: testEnv(server.url) }), {});
+    const catalog = JSON.parse(fs.readFileSync(path.join(root, 'Localizable.xcstrings'), 'utf8'));
+    assert.equal(catalog.version, '1.1');
+    assert.equal(catalog.strings.hello.localizations.de.stringUnit.value, 'Hallo');
+  } finally { await server.close(); }
+});
+
 test('pull without a release fails with a hint instead of falling back to the draft', async () => {
   const server = await fakeServer({ slug: 'app', exports });
   try {

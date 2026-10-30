@@ -16,7 +16,8 @@ test('iOS push uploads only missing values, with branch and plural arguments, ne
     writeFiles(root, {
       'locli.json': { project: 'app', sourceLanguage: 'en', targets: [{ platform: 'ios', format: 'xcstrings', path: 'App/Localizable.xcstrings' }] },
       'App/Localizable.xcstrings': {
-        sourceLanguage: 'en', version: '1.0', strings: {
+        // Current Xcode saves catalogs as 1.1.
+        sourceLanguage: 'en', version: '1.1', strings: {
           'account.login': { comment: 'Login button', localizations: { en: unit('Sign in'), de: unit('Anmelden', 'needs_review') } },
           legacy: { localizations: { en: unit('Old') } },
           owner_receipts: { localizations: { en: { stringUnit: { state: 'translated', value: '%#@count@' }, substitutions: { count: { argNum: 2, formatSpecifier: 'lld', variations: { plural: { one: unit('%1$@ has %arg receipt'), other: unit('%1$@ has %arg receipts') } } } } } } },

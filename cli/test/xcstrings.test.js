@@ -52,7 +52,7 @@ test('unsupported shapes are rejected before any data is lost', () => {
   assert.throws(() => localizationUnits({ variations: { device: {} } }, 'k (en)'), /unsupported plural variation/);
   assert.throws(() => localizationUnits({ stringUnit: { value: '  ' } }, 'k (en)'), /empty or invalid/);
   assert.throws(() => localizationUnits({ stringUnit: {}, substitutions: { a: {}, b: {} } }, 'k (en)'), /only one plural substitution/);
-  assert.throws(() => units({ version: '2.0', strings: {}, sourceLanguage: 'en' }), /Invalid String Catalog/);
+  assert.throws(() => units({ version: '2.0', strings: {}, sourceLanguage: 'en' }), /Unsupported String Catalog version/);
   const conflicting = structuredClone(catalog);
   conflicting.strings.owner_receipts.localizations.de = structuredClone(conflicting.strings.owner_receipts.localizations.en);
   conflicting.strings.owner_receipts.localizations.de.substitutions.count.argNum = 1;
@@ -109,4 +109,12 @@ sys.stdout.write(json.dumps(out))
   const merged = mergeCatalog(structuredClone(catalog), remote);
   merged.strings.new_key.localizations = { en: unit('New'), 'pt-br': unit('Novo') };
   assert.equal(formatCatalog(merged), expected.content);
+});
+
+test('catalogs of version 1.x are read; another major version is refused by name', () => {
+  for (const version of ['1.0', '1.1']) {
+    assert.equal(units({ sourceLanguage: 'en', version, strings: { a: { localizations: { en: unit('A') } } } }).en.a.value, 'A');
+  }
+  assert.throws(() => units({ sourceLanguage: 'en', version: '2.0', strings: {} }), /Unsupported String Catalog version "2.0"/);
+  assert.throws(() => units({ sourceLanguage: 'en', strings: {} }), /Unsupported String Catalog version null/);
 });
