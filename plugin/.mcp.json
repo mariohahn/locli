@@ -1,5 +1,5 @@
 {
   "mcpServers": {
-    "locli": { "command": "npx", "args": ["-y", "@locli/cli", "mcp"] }
+    "locli": { "command": "npx", "args": ["-y", "@locli/cli@0.1.5", "mcp"] }
   }
 }
