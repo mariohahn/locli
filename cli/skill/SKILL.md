@@ -76,6 +76,13 @@ source, check mechanically, back-translate, have another model review, look at t
   Keying by the sentence (`t("Projekt wechseln: {name}")`) gives every text its own
   area, breaks renames and review; `push` refuses such new keys (`--allow-text-keys`
   only for catalogs keyed by text on purpose, e.g. SwiftUI `Text("…")`).
+- **No keys without text.** A value that is only placeholders (`%@ %@`, `{a}: {b}`)
+  has nothing to translate. In SwiftUI, don't interpolate an icon and a text into one
+  `Text("\(Image(…)) \(title)")` (it extracts `%@ %@`); use `Label` or an `HStack`.
+  Brand names and other words that never change get "Don't translate" in Xcode
+  (`shouldTranslate: false`) or `translatable="false"` on Android. `push` skips all of
+  these; locli never counts such keys as missing. Keep a placeholder-only key only
+  when languages really reorder it (`%1$@ (%2$@)` vs `%2$@ (%1$@)`).
 - **`lower_snake_case` is a convention.** The server enforces names only for Android,
   so legacy dotted iOS keys still work. Change them only via the merge workflow.
 - **Placeholders are the app's contract.** Translations may reorder arguments but

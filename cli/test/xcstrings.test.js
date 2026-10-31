@@ -118,3 +118,19 @@ test('catalogs of version 1.x are read; another major version is refused by name
   assert.throws(() => units({ sourceLanguage: 'en', version: '2.0', strings: {} }), /Unsupported String Catalog version "2.0"/);
   assert.throws(() => units({ sourceLanguage: 'en', strings: {} }), /Unsupported String Catalog version null/);
 });
+
+test('entries with nothing to translate are not pushed', async () => {
+  const { readXcstrings } = await import('../src/formats/xcstrings.js');
+  const dir = tempDir();
+  const file = path.join(dir, 'Localizable.xcstrings');
+  fs.writeFileSync(file, JSON.stringify({ sourceLanguage: 'en', version: '1.1', strings: {
+    '%@ %@': { localizations: { en: unit('%1$@ %2$@') } },
+    '%@ (%@)': { localizations: { en: unit('%1$@ (%2$@)'), de: unit('%2$@ (%1$@)') } },
+    CFBundleName: { shouldTranslate: false, localizations: { en: unit('Orbit') } },
+    title: { localizations: { en: unit('%@ items') } },
+  } }));
+  const texts = readXcstrings(file);
+  assert.deepEqual(texts.keys, ['%@ (%@)', 'title'], 'reordered arguments still need a key');
+  assert.deepEqual(Object.keys(texts.locales.en).sort(), ['%@ (%@)', 'title']);
+  assert.match(texts.warnings[0], /2 entries with nothing to translate skipped/);
+});

@@ -33,6 +33,18 @@ export function transform(text, literal, argument) {
 }
 
 /**
+ * True for texts that are only placeholders, spaces and punctuation (`%@ %@`, `{name}: {value}`):
+ * nothing to translate. Mirrors FormatPlaceholders.isPlaceholderOnly.
+ * @param {string} text
+ */
+export function isPlaceholderOnly(text) {
+  let args = 0;
+  const literals = transform(text, (l) => l, () => { args += 1; return ''; });
+  const rest = literals.replace(/\{[A-Za-z0-9_]+\}/g, '');
+  return (args > 0 || rest.length < literals.length) && !/[\p{L}\p{N}]/u.test(rest);
+}
+
+/**
  * Argument number → type (`%i` counts as `d`). Throws on conflicting reuse.
  * @param {string} text
  * @returns {Map<number, string>}

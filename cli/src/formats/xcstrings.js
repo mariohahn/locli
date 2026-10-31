@@ -1,6 +1,7 @@
 // Apple String Catalogs, ported from scripts/localize-ios.py (plain and single-selector plural entries).
 import fs from 'node:fs';
 import { pythonJson, writeFileIfChanged, matchLocale, LocliError } from '../util.js';
+import { isPlaceholderOnly } from './printf.js';
 
 export const PLURAL_CATEGORIES = ['zero', 'one', 'two', 'few', 'many', 'other'];
 const FORMAT_SPECIFIERS = ['d', 'i', 'u', 'ld', 'li', 'lu', 'lld', 'lli', 'llu', 'zd', 'zu'];
@@ -145,7 +146,18 @@ export function readXcstrings(file) {
     const comment = String(/** @type {any} */ (entry).comment ?? '').trim();
     if (comment && comment !== 'Imported') comments[key] = comment;
   }
-  return { catalog, sourceLanguage: catalog.sourceLanguage, locales, comments, keys: Object.keys(catalog.strings).sort(), warnings: [], pluralArguments: selectors };
+  // Nothing to translate: "Don't translate" in Xcode, and keys SwiftUI extracts from
+  // `Text("\(icon) \(title)")` that are only placeholders and read the same in every language.
+  // A placeholder-only entry whose languages reorder the arguments stays.
+  const skipped = Object.keys(catalog.strings).filter((key) => {
+    if (/** @type {any} */ (catalog.strings[key]).shouldTranslate === false) return true;
+    const values = Object.values(locales).map((entries) => entries[key]).filter(Boolean);
+    return values.length > 0 && values.every((entry) => !entry.forms && isPlaceholderOnly(entry.value)) && new Set(values.map((entry) => entry.value)).size === 1;
+  });
+  for (const key of skipped) for (const entries of Object.values(locales)) delete entries[key];
+  const warnings = skipped.length ? [`${skipped.length} ${skipped.length === 1 ? 'entry' : 'entries'} with nothing to translate skipped (placeholders only or "Don't translate"): ${skipped.slice(0, 5).join(', ')}${skipped.length > 5 ? ', …' : ''}`] : [];
+  const keys = Object.keys(catalog.strings).filter((key) => !skipped.includes(key)).sort();
+  return { catalog, sourceLanguage: catalog.sourceLanguage, locales, comments, keys, warnings, pluralArguments: selectors };
 }
 
 /** Serialises like the Python CLI: sorted keys, two-space indent, trailing newline. @param {any} catalog */
