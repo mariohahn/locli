@@ -100,7 +100,7 @@ export async function whoami(ctx, flags) {
   const token = resolveToken(apiURL, ctx.env);
   if (!token) throw new LocliError(NOT_LOGGED_IN);
   const me = await new Api(apiURL, { env: ctx.env, fetch: ctx.fetch }).get('/api/me');
-  const via = token.source === 'env' ? 'token from LOCLI_TOKEN/LOCALIZE_TOKEN' : `stored login (${credentialsFile(ctx.env)})`;
+  const via = token.source === 'env' ? 'token from LOCLI_TOKEN/LOCALIZE_TOKEN' : `stored login (${token.file ?? credentialsFile(ctx.env)})`;
   const result = { apiURL, email: me?.user?.email ?? null, name: me?.user?.name ?? null, via };
   if (flags.json) ctx.out(JSON.stringify(result, null, 2));
   else ctx.out(`${result.email} on ${apiURL} (${via})`);

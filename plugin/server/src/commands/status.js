@@ -1,4 +1,5 @@
 // status: project, languages, missing texts per language, open features, unreleased changes.
+import { isDottedIdentifier } from './keys.js';
 import { openConfig } from '../context.js';
 import { requireProject, projectDetail, valueIndex, releasesURL, projectURL } from '../remote.js';
 import { plural } from '../util.js';
@@ -43,6 +44,7 @@ export async function status(ctx, flags) {
     sourceLanguage: detail.defaultLocale, platforms: detail.platforms, keys: appKeys.length,
     targets: config.targets.map((t) => `${t.platform}:${t.format}:${t.path}`),
     locales, openFeatures: features, release, glossary,
+    dottedKeys: appKeys.filter((/** @type {any} */ k) => isDottedIdentifier(k.key) && k.platforms.some((/** @type {string} */ p) => p === 'ios' || p === 'android')).length,
     unreleasedChanges: release ? release.changedKeys > 0 : null,
     url: projectURL(api.baseURL, detail.id), releaseURL: releasesURL(api.baseURL, detail.id),
   };
@@ -57,6 +59,7 @@ export async function status(ctx, flags) {
   if (glossary && (glossary.terms || glossary.tone.length)) {
     ctx.out(`Translation guide: ${plural(glossary.terms, 'glossary term')}${glossary.tone.length ? `, tone for ${glossary.tone.join(', ')}` : ''}; ${glossary.issues ? `${plural(glossary.issues, 'text')} break the glossary (locli guide lists them)` : 'every translation follows it'}.`);
   }
+  if (result.dottedKeys) ctx.out(`${plural(result.dottedKeys, 'iOS/Android key')} still use${result.dottedKeys === 1 ? 's' : ''} dots; \`npx @locli/cli keys normalize\` moves them to _.`);
   if (release) {
     ctx.out(release.changedKeys
       ? `${plural(release.changedKeys, 'key')} changed since ${release.latest ? `release ${release.latest}` : 'the start (no release yet)'}; ${plural(release.pendingReviews, 'text')} (key × language) awaiting review${release.placeholderErrors ? `, ${release.placeholderErrors} placeholder errors block the release` : ''}. Release page: ${result.releaseURL}`

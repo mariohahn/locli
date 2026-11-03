@@ -1,4 +1,6 @@
-// Agent instructions written by `init`: an AGENTS.md block, CLAUDE.md import and the packaged skill.
+// Agent instructions written by `init`: an AGENTS.md block, the CLAUDE.md import and, with --skill,
+// a copy of the packaged skill. By default the skill stays out of the app repository: the plugin and
+// the docs carry it, so it never goes stale in someone else's repo.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,11 +23,13 @@ source language \`${config.sourceLanguage}\`). Text files: ${files}. Config: \`l
    \`npx @locli/cli areas --feature login\` (MCP \`locli_areas\`) and name every new key with the
    area it reports (\`auth_username_label\`), or the new area it proposes. Reuse an existing key with
    the same meaning (\`locli_find_texts\`). Add new keys to the source-language file with a comment
-   saying where the text appears and what each placeholder holds.
+   saying where the text appears and what each placeholder holds. Keys use \`_\`, never dots
+   (\`auth_username_label\`); for old dotted iOS keys run \`npx @locli/cli keys normalize\`.
 2. Translating: read \`npx @locli/cli guide\` (MCP \`locli_guide\`) first and follow its tone and
    glossary, and \`npx @locli/cli context\` (MCP \`locli_context\`): where each key is used (toolbar
    item, button, push notification …) and how many characters fit there. Add every language of the
-   project, then check them as the locli skill describes.
+   project, then check placeholders, plural forms and lengths as https://locli.dev/docs/agents.md
+   describes.
 3. Run \`npx @locli/cli push --dry-run\`, fix the glossary and length warnings in your files, then
    \`npx @locli/cli push\` from your working branch. It only adds what locli lacks and never
    overwrites a text once it is there. Tell the user how many texts wait for a release; a
@@ -34,7 +38,8 @@ source language \`${config.sourceLanguage}\`). Text files: ${files}. Config: \`l
 
 Never edit existing texts locally: \`push\` does not overwrite them and \`pull\` replaces them.
 Change them in locli. If the CLI says "Not logged in", ask the user to run
-\`npx @locli/cli login\`; never read or print tokens. More: https://locli.dev/docs/agents.md
+\`npx @locli/cli login\`; never read or print tokens. Full rules (keys, merging duplicates, plurals,
+placeholders): https://locli.dev/docs/agents.md; in Claude Code the locli plugin brings them as a skill.
 ${END}`;
 }
 
@@ -79,10 +84,10 @@ export function renameSkill(text) {
 }
 
 /**
- * Writes AGENTS.md, the CLAUDE.md import and the skill (+ .claude/skills symlink).
- * @param {string} root @param {any} config @returns {string[]} what changed
+ * Writes AGENTS.md and the CLAUDE.md import; with `skill`, also the skill (+ .claude/skills symlink).
+ * @param {string} root @param {any} config @param {{ skill?: boolean }} [options] @returns {string[]} what changed
  */
-export function writeAgentFiles(root, config) {
+export function writeAgentFiles(root, config, { skill = false } = {}) {
   const changes = [];
   const agentsFile = path.join(root, 'AGENTS.md');
   const before = fs.existsSync(agentsFile) ? fs.readFileSync(agentsFile, 'utf8') : null;
@@ -98,9 +103,15 @@ export function writeAgentFiles(root, config) {
     }
   }
 
+  const skillDir = path.join(root, '.agents', 'skills', 'locli');
+  if (!skill) {
+    if (fs.existsSync(path.join(skillDir, 'SKILL.md'))) {
+      changes.push('.agents/skills/locli is from an earlier init and no longer needed: delete it (and .claude/skills/locli), or keep it current with --skill');
+    }
+    return changes;
+  }
   const source = skillSource();
   if (!source) return [...changes, 'skill not installed (package has no skill/ folder)'];
-  const skillDir = path.join(root, '.agents', 'skills', 'locli');
   copySkill(source, skillDir);
   changes.push('installed .agents/skills/locli');
   const link = path.join(root, '.claude', 'skills', 'locli');

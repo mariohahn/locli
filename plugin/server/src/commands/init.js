@@ -9,7 +9,8 @@ import { writeAgentFiles } from '../agents.js';
 import { readTarget, describeTarget } from '../targets.js';
 import { Api, NOT_LOGGED_IN } from '../http.js';
 import { findProject, projectDetail, ensurePlatforms, ensureLocales, projectURL } from '../remote.js';
-import { LocliError, slugify, normalizeLocale } from '../util.js';
+import { LocliError, slugify, normalizeLocale, plural } from '../util.js';
+import { isDottedIdentifier } from './keys.js';
 import { findAppIcon, iconDataURL } from '../icon.js';
 
 /** @param {string} dir */
@@ -41,7 +42,7 @@ function legacyConfig(root) {
 
 /**
  * @param {import('../context.js').Context} ctx
- * @param {{ name?: string, slug?: string, source?: string, yes?: boolean, agentFiles?: boolean, target?: string[], apiUrl?: string, config?: string, icon?: string | false }} flags
+ * @param {{ name?: string, slug?: string, source?: string, yes?: boolean, agentFiles?: boolean, skill?: boolean, target?: string[], apiUrl?: string, config?: string, icon?: string | false }} flags
  */
 export async function init(ctx, flags) {
   const found = findConfig(ctx.cwd, ctx.env, flags.config);
@@ -81,12 +82,18 @@ export async function init(ctx, flags) {
   ctx.out(`${wrote ? (existingFile ? 'Updated' : 'Wrote') : 'Kept'} ${path.relative(ctx.cwd, file) || CONFIG_FILE}: project ${slug}, source language ${sourceLanguage}.`);
   if (legacy) ctx.out(`Imported settings from ${legacy.file} (the Python CLI's config).`);
   for (const note of detected.notes) ctx.info(note);
-  if (targets.length) for (const t of targets) ctx.out(`  target ${describeTarget(t)}`);
-  else {
+  if (targets.length) {
+    for (const t of targets) ctx.out(`  target ${describeTarget(t)}`);
+    // Dotted iOS identifiers can't be pushed (Android names can't hold dots): say so before the first push.
+    const dotted = targets.filter((t) => t.format === 'xcstrings').flatMap((t) => {
+      try { return readTarget(root, t, sourceLanguage).keys.filter(isDottedIdentifier); } catch { return []; }
+    });
+    if (dotted.length) ctx.out(`${plural(dotted.length, 'key')} use${dotted.length === 1 ? 's' : ''} dots (${dotted.slice(0, 3).join(', ')}${dotted.length > 3 ? ' …' : ''}); locli uses _ on iOS and Android. Before pushing run \`npx @locli/cli keys normalize --dry-run\`, then without --dry-run: it renames them in the catalog and the Swift code.`);
+  } else {
     ctx.out('No localization files found yet. Create the source-language file for your stack, then rerun init:');
     for (const hint of SETUP_HINTS) ctx.out(`  - ${hint}`);
   }
-  if (flags.agentFiles !== false) for (const change of writeAgentFiles(root, config)) ctx.out(`  ${change}`);
+  if (flags.agentFiles !== false) for (const change of writeAgentFiles(root, config, { skill: flags.skill === true })) ctx.out(`  ${change}`);
 
   // Remote setup: project, platforms, languages.
   const api = new Api(apiURL, { env: ctx.env, fetch: ctx.fetch });

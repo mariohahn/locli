@@ -8,6 +8,7 @@ import { requireProject, projectDetail, ensurePlatforms, ensureLocales, valueInd
 import { currentBranch } from '../git.js';
 import { ApiError } from '../http.js';
 import { LocliError, areaOf, normalizeLocale, plural } from '../util.js';
+import { isDottedIdentifier } from './keys.js';
 
 /**
  * A key that is visible text rather than an identifier: whitespace, sentence punctuation, braces or
@@ -195,6 +196,16 @@ Keys are stable lower_snake_case identifiers with a feature prefix, e.g. account
 the text is the value. The prefix becomes the area in locli. Rename them in the app, then push again.
 Apps whose catalog is keyed by text on purpose (e.g. SwiftUI Text("…")) can pass --allow-text-keys.`, 2);
   }
+  // iOS and Android share one identifier and Android names can't hold dots: common.archived is common_archived.
+  const dotted = local.filter(({ target }) => target.platform === 'ios' || target.platform === 'android').flatMap(({ texts }) => texts.keys.filter(isDottedIdentifier));
+  const newDotted = [...new Set(dotted.filter((key) => !remoteNames.has(key)))];
+  if (newDotted.length) {
+    throw new LocliError(`${plural(newDotted.length, 'new key')} contain${newDotted.length === 1 ? 's' : ''} dots: ${newDotted.slice(0, 5).join(', ')}${newDotted.length > 5 ? ' …' : ''}
+Keys used on iOS or Android use _ (common_archived). Run \`npx @locli/cli keys normalize --dry-run\`, then without
+--dry-run: it renames them in the String Catalog and the Swift code (and moves keys already in locli). Then push again.`, 2);
+  }
+  const oldDotted = new Set(dotted.filter((key) => remoteNames.has(key)));
+  if (oldDotted.size) ctx.warn(`${plural(oldDotted.size, 'key')} still use${oldDotted.size === 1 ? 's' : ''} dots (${[...oldDotted].slice(0, 3).join(', ')}${oldDotted.size > 3 ? ' …' : ''}). Run \`npx @locli/cli keys normalize\` to move them to _.`);
   const unconventional = [...new Set(local.flatMap(({ texts }) => texts.keys.filter((key) => !remoteNames.has(key) && !isTextKey(key) && !/^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/.test(key))))];
   if (unconventional.length) ctx.warn(`${plural(unconventional.length, 'new key')} not in lower_snake_case (convention: feature prefix + words, e.g. account_login): ${unconventional.slice(0, 5).join(', ')}${unconventional.length > 5 ? ' …' : ''}`);
   if (!flags.dryRun) await ensurePlatforms(api, detail, platforms);

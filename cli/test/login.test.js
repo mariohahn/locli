@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { login, logout, whoami } from '../src/commands/login.js';
-import { credentialsFile } from '../src/credentials.js';
+import { credentialsFile, saveCredentials } from '../src/credentials.js';
 import { tempDir, testContext, fakeServer, TOKEN } from './helpers.js';
 
 test('device login polls through pending and slow_down, stores the token with 0600', async () => {
@@ -49,4 +49,16 @@ test('device login reports denial and expiry; --no-browser and CI skip the brows
 
 test('whoami without a token gives the login instruction', async () => {
   await assert.rejects(whoami(testContext({ cwd: tempDir(), env: { XDG_CONFIG_HOME: tempDir() } }), { apiUrl: 'http://127.0.0.1:9' }), /Not logged in\. Ask the user to run `npx @locli\/cli login`/);
+});
+
+test('a stored login in ~/.config is found when an agent tool sets its own XDG_CONFIG_HOME', async () => {
+  const server = await fakeServer();
+  try {
+    const home = tempDir();
+    saveCredentials({ XDG_CONFIG_HOME: path.join(home, '.config') }, { [server.url]: { token: TOKEN, email: 'dev@example.com' } });
+    const env = { HOME: home, XDG_CONFIG_HOME: tempDir(), PATH: process.env.PATH };
+    const me = await whoami(testContext({ cwd: tempDir(), env }), { apiUrl: server.url });
+    assert.equal(me.email, 'dev@example.com');
+    assert.equal(me.via, `stored login (${path.join(home, '.config', 'locli', 'credentials.json')})`);
+  } finally { await server.close(); }
 });

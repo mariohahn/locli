@@ -51,20 +51,35 @@ test('AGENTS.md block is idempotent and keeps surrounding content', () => {
   assert.equal(renameSkill('---\nname: localize\ndescription: "x"\n---\nname: localize stays'), '---\nname: locli\ndescription: "x"\n---\nname: localize stays');
 });
 
-test('agent files: CLAUDE.md import, skill copy and relative symlink, rerun-safe', () => {
+test('agent files: AGENTS.md and the CLAUDE.md import only; the skill stays out of the app repository', () => {
   const root = tempDir();
   writeFiles(root, { 'CLAUDE.md': '# Project\n' });
   const config = { project: 'app', sourceLanguage: 'en', targets: [] };
-  writeAgentFiles(root, config);
+  const first = writeAgentFiles(root, config);
   const second = writeAgentFiles(root, config);
+  assert.deepEqual(first, ['created AGENTS.md', 'added @AGENTS.md to CLAUDE.md']);
+  assert.deepEqual(second, []);
   assert.equal(fs.readFileSync(path.join(root, 'CLAUDE.md'), 'utf8'), '# Project\n\n@AGENTS.md\n');
-  assert.ok(!second.includes('updated AGENTS.md'));
+  assert.ok(!fs.existsSync(path.join(root, '.agents')), 'no skill copy by default');
+  assert.ok(!fs.existsSync(path.join(root, '.claude')));
+  assert.doesNotMatch(fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8'), /locli skill describes/);
+});
+
+test('agent files with --skill: skill copy and relative symlink, rerun-safe; an old copy is pointed out', () => {
+  const root = tempDir();
+  const config = { project: 'app', sourceLanguage: 'en', targets: [] };
+  writeAgentFiles(root, config, { skill: true });
+  writeAgentFiles(root, config, { skill: true });
   const skill = fs.readFileSync(path.join(root, '.agents/skills/locli/SKILL.md'), 'utf8');
   assert.match(skill, /^---\nname: locli$/m);
   assert.ok(fs.existsSync(path.join(root, '.agents/skills/locli/references/cli.md')));
   const link = path.join(root, '.claude/skills/locli');
   assert.equal(fs.readlinkSync(link), path.join('..', '..', '.agents', 'skills', 'locli'));
   assert.ok(fs.existsSync(path.join(link, 'SKILL.md')));
+  // A later init without --skill leaves the copy alone but says it is no longer needed.
+  const later = writeAgentFiles(root, config);
+  assert.ok(later.some((change) => /no longer needed/.test(change)), later.join('\n'));
+  assert.ok(fs.existsSync(path.join(root, '.agents/skills/locli/SKILL.md')));
 });
 
 test('init writes locli.json, creates the project, languages and platforms', async () => {

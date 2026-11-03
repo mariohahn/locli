@@ -12,13 +12,15 @@ npx @locli/cli init
 
 `init` detects the text files, writes `locli.json`, writes the locli block into
 `AGENTS.md` (between `<!-- locli:start -->` and `<!-- locli:end -->`), adds `@AGENTS.md`
-to an existing `CLAUDE.md`, installs this skill to `.agents/skills/locli/` (linked from
-`.claude/skills/locli/`) and, when logged in, creates the project, its languages and
+to an existing `CLAUDE.md` and, when logged in, creates the project, its languages and
 platforms. A project without an icon gets the app's own (iOS AppIcon, Android launcher
 icon or web `apple-touch-icon`/`icon.png`, scaled to 128 px with `sips` on macOS); an icon
-someone chose in locli stays. It is safe to rerun. Options: `--name`, `--slug`, `--source LANG`,
+someone chose in locli stays. The app repository gets no copy of this skill (the Claude Code
+plugin and https://locli.dev/docs/agents.md carry it); `--skill` copies it to
+`.agents/skills/locli/` (linked from `.claude/skills/locli/`) when a team wants it there. It is safe to rerun. Options: `--name`, `--slug`, `--source LANG`,
 `--target platform:format:path` (repeatable, overrides detection), `--icon FILE` (sets or
-replaces the icon), `--no-icon`, `--yes`, `--no-agent-files`.
+replaces the icon), `--no-icon` (only when the user asks: the icon is how people find the
+project in locli), `--yes`, `--no-agent-files`.
 
 Detection: `*.xcstrings` (ios), `**/src/main/res/values/strings.xml` (android),
 `messages|locales|i18n|lang/{locale}.json` (web). If the app has no catalog yet, create
@@ -30,6 +32,9 @@ signs up) and approves. The token is stored per server in
 `~/.config/locli/credentials.json` (mode 0600). CI sets `LOCLI_TOKEN` from its secrets.
 Never read the credentials file, print tokens or commit them. `whoami` shows the account,
 `logout` revokes the token.
+If the user is logged in (`whoami` works in their terminal) but the agent's shell still says not logged in,
+the agent tool runs with its own `XDG_CONFIG_HOME` (OpenCode, sandboxes). locli 0.1.8+ also reads
+`~/.config/locli/credentials.json`; with an older CLI run `npx @locli/cli@latest`. Don't copy or read the file.
 
 ## `locli.json`
 
@@ -65,6 +70,8 @@ Never read the credentials file, print tokens or commit them. `whoami` shows the
 | `areas [--feature NAME] [--json]` | Feature areas with key counts; with `--feature` the area to use or start. |
 | `guide [--json] [--set FILE]` | Translation guide (tone, glossary) and the texts that break it; `--set` replaces it. |
 | `context [--key KEY_OR_AREA] [--target P] [--json]` | Where each key is used in the code on every platform, its role (toolbar item, button, push notification …) and length budget, translations that are too long, keys not found. Local, no login. |
+| `keys normalize [--dry-run] [--no-code] [--json]` | Move dotted iOS/Android keys to `_` in locli, the String Catalog and exact Swift/Objective-C literals; merges into an existing `_` key, lists conflicts. |
+| `community [--status S] [--locale CODE] [--json] [--accept ID \| --reject ID \| --hide ID] [--note TEXT]` | Suggestions from the public community catalog, most voted first, with source, today's text and discussion; decide one. |
 | `mcp` | MCP server on stdio. |
 
 Every command takes `--api-url`, `--config FILE` (or `LOCLI_CONFIG`) and `--help`.
@@ -122,8 +129,24 @@ keys belong to), `locli_guide` (tone, glossary and its
 issues; read before translating), `locli_context` (where each key is used, its role and
 length budget, too-long translations), `locli_find_texts` (search keys and
 values before creating one), `locli_add_texts` (create keys with values or plural
-forms), `locli_push` and `locli_pull`. It reads `locli.json` from the working directory.
+forms), `locli_push`, `locli_pull`, `locli_community_suggestions` and
+`locli_community_review` (see below). It reads `locli.json` from the working directory.
 Claude Code: `claude mcp add --scope project locli -- npx -y @locli/cli mcp`.
+
+## Community suggestions
+
+A project can open a public catalog at `https://locli.dev/c/<slug>` (owners switch it on under
+**Community** and choose the languages). Anyone can suggest translations of the latest
+release's plain texts, vote and discuss, without an account; plural, array and store texts
+are not offered. Suggestions with broken placeholders are refused on submit.
+
+Moderating (editor role or write token): `locli community` (MCP `locli_community_suggestions`)
+lists the open ones, then `--accept ID`, `--reject ID` or `--hide ID` (MCP
+`locli_community_review`). Accepting makes the suggestion the working text with status
+`translated`; it ships only with the next approved release. Before accepting, check the
+glossary and tone (`locli guide`) and the length budget (`locli context`); among competing
+suggestions prefer the clearly better wording, not only the score. Hide spam and abuse, also
+in the discussion (web app). Agents never approve the release.
 
 ## Older setups
 

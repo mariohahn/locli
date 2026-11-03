@@ -13,7 +13,8 @@ npx @locli/cli init
 
 - `locli.json` with the project slug, source language and one target per catalog
 - a locli block in `AGENTS.md` (and `@AGENTS.md` in an existing `CLAUDE.md`)
-- the locli agent skill in `.agents/skills/locli/` (linked from `.claude/skills/locli/`)
+- no copy of the agent skill: the Claude Code plugin and https://locli.dev/docs/agents.md carry it;
+  `--skill` copies it to `.agents/skills/locli/` (linked from `.claude/skills/locli/`)
 
 When you are logged in, `init` also creates the project with its languages and
 platforms. It is safe to rerun.
@@ -72,6 +73,8 @@ The JSON schema is shipped as `@locli/cli/schema/locli.json`.
 | `areas [--feature NAME] [--json]` | List feature areas, or find the area a new feature's texts belong to |
 | `context [--key KEY_OR_AREA] [--json]` | Where each key is used in the code, as what (toolbar item, button, push notification …), and translations too long for it |
 | `guide [--json] [--set FILE]` | Show the translation guide (tone, glossary) and the texts that break it; `--set` replaces it |
+| `keys normalize [--dry-run] [--no-code]` | Rename dotted iOS/Android keys to `_` (common.archived → common_archived) in locli, the String Catalog and the Swift code |
+| `community [--status S] [--locale CODE] [--accept ID \| --reject ID \| --hide ID]` | Suggestions from the project's public community catalog, the most voted first; accept, reject or hide one |
 | `mcp` | Start the MCP server on stdio |
 
 Every command takes `--api-url`, `--config` and `--help`. Exit codes: 0 ok, 1 error,

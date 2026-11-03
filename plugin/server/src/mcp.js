@@ -8,6 +8,9 @@ import { findTexts, addTexts } from './commands/texts.js';
 import { guide } from './commands/guide.js';
 import { areas } from './commands/areas.js';
 import { context } from './commands/context.js';
+import { community, review } from './commands/community.js';
+import { openConfig } from './context.js';
+import { requireProject } from './remote.js';
 import { VERSION } from './version.js';
 
 export const PROTOCOL_VERSION = '2025-06-18';
@@ -19,6 +22,8 @@ Before translating, call locli_guide: follow its tone per language and glossary,
 Call locli_context too: it says where each key is used (toolbar item, button, title, push notification …) and how long its text may be.
 New texts: add them to the app's source-language file and call locli_push (or call locli_add_texts directly). Existing texts are never overwritten;
 they are changed in locli. New texts reach the app only after a project owner approves a release; then call locli_pull. Never approve releases yourself.
+When the project has a public community catalog, locli_community_suggestions lists what the community suggested; accept the good ones
+with locli_community_review (check placeholders, glossary and tone first), reject weak ones and hide spam.
 If a tool says "Not logged in", ask the user to run \`npx @locli/cli login\`.`;
 
 const platforms = { type: 'array', items: { type: 'string', enum: ['ios', 'android', 'web', 'backend'] } };
@@ -117,6 +122,25 @@ export const TOOLS = [
     inputSchema: { type: 'object', properties: { draft: { type: 'boolean' }, target: { type: 'string', description: 'Only this platform.' } }, additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
   },
+  {
+    name: 'locli_community_suggestions',
+    title: 'Community suggestions',
+    description: 'Suggestions from the project\'s public community catalog (anyone can suggest translations of released texts, vote and discuss, without an account), the most voted first. Each has an id, key, language, source text, today\'s text in locli, the suggestion, score, votes and the public discussion. Read-only.',
+    inputSchema: { type: 'object', properties: { locale: { type: 'string', description: 'Only this language, e.g. "fr".' }, status: { type: 'string', enum: ['open', 'accepted', 'rejected', 'hidden'], description: 'Default: open.' } }, additionalProperties: false },
+    annotations: { readOnlyHint: true },
+  },
+  {
+    name: 'locli_community_review',
+    title: 'Review a community suggestion',
+    description: 'Decide one community suggestion: accept makes it the working text (it ships with the next approved release; you never approve releases), reject declines it, hide removes spam or abuse from the public page. Before accepting, check that placeholders, the glossary (locli_guide) and the tone fit; when several suggestions compete, prefer the clearly better wording, not only the score.',
+    inputSchema: {
+      type: 'object',
+      properties: { id: { type: 'string', description: 'Suggestion id from locli_community_suggestions.' }, decision: { type: 'string', enum: ['accept', 'reject', 'hide'] }, note: { type: 'string', description: 'Why, visible to the team.' } },
+      required: ['id', 'decision'],
+      additionalProperties: false,
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+  },
 ];
 
 /**
@@ -156,8 +180,13 @@ export async function callTool(name, args = {}, overrides = {}) {
       for (const w of structured.warnings) lines.push(`warning: ${w}`);
     } else if (name === 'locli_push') structured = await push(ctx, { dryRun: args.dryRun, target: args.target });
     else if (name === 'locli_pull') structured = await pull(ctx, { draft: args.draft, target: args.target });
+    else if (name === 'locli_community_suggestions') structured = await community(ctx, { json: true, locale: args.locale, status: args.status });
+    else if (name === 'locli_community_review') {
+      const { config, api } = openConfig(ctx, {});
+      structured = await review(ctx, api, await requireProject(api, config.project), { id: args.id, decision: args.decision, note: args.note });
+    }
     else return { content: [{ type: 'text', text: `Unknown tool ${name}` }], isError: true };
-    const text = name === 'locli_status' || name === 'locli_guide' || name === 'locli_areas' || name === 'locli_context' ? JSON.stringify(structured, null, 2) : lines.join('\n') || 'Done.';
+    const text = ['locli_status', 'locli_guide', 'locli_areas', 'locli_context', 'locli_community_suggestions'].includes(name) ? JSON.stringify(structured, null, 2) : lines.join('\n') || 'Done.';
     return { content: [{ type: 'text', text }], isError: false };
   } catch (error) {
     lines.push(/** @type {Error} */ (error).message);

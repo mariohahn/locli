@@ -57,6 +57,19 @@ as written) and where each key is used (`npx @locli/cli context`, MCP `locli_con
 item, button, title, push notification … and its length budget), then follow [translation](references/translation.md): translate from the
 source, check mechanically, back-translate, have another model review, look at the UI.
 
+**Moderate community suggestions** (the project has a public catalog at `locli.dev/c/<slug>`):
+`npx @locli/cli community` (MCP `locli_community_suggestions`), check each against the guide,
+placeholders and length, then accept, reject or hide it ([CLI](references/cli.md#community-suggestions)).
+Accepted texts wait for the next approved release.
+
+**Move dotted iOS/Android keys to `_`** (`push` refuses new ones, `init` and `status` mention old ones):
+run `npx @locli/cli keys normalize --dry-run` and show the user the result, then run it without
+`--dry-run`. It renames the keys in locli (texts, translations and history move along), merges them
+into an existing `_` key with the same texts, renames them in the `.xcstrings` files and replaces the
+exact string literals in `.swift`/`.m` files. Then build the app, fix what the build reports
+(generated accessors, string constants built from parts), check the listed conflicts, Android
+resource names and web lookups, and commit catalog and code together.
+
 **Fix an error**: [errors](references/errors.md) lists every CLI/API message with cause and fix.
 
 **Integrate an app or a new platform**: pick the guide from the table below.
@@ -83,8 +96,11 @@ source, check mechanically, back-translate, have another model review, look at t
   (`shouldTranslate: false`) or `translatable="false"` on Android. `push` skips all of
   these; locli never counts such keys as missing. Keep a placeholder-only key only
   when languages really reorder it (`%1$@ (%2$@)` vs `%2$@ (%1$@)`).
-- **`lower_snake_case` is a convention.** The server enforces names only for Android,
-  so legacy dotted iOS keys still work. Change them only via the merge workflow.
+- **No dots on iOS or Android.** Keys used there are `_` only (`common_archived`), because
+  Android resource names can't hold dots and the identifier is the same everywhere. locli and
+  `push` refuse new dotted keys. Legacy ones: `npx @locli/cli keys normalize --dry-run`, then
+  without `--dry-run` (see the task below). Text used as a key ("Gespeichert.") and web-only
+  nested JSON paths keep their dots. `lower_snake_case` is the convention for new keys.
 - **Placeholders are the app's contract.** Translations may reorder arguments but
   not drop, add or retype them (`%d` ≠ `%lld`, `{n}` ≠ `{n, number}`). printf counts
   for iOS, Android and texts shared with them; ICU arguments (`{name}`) for web and
@@ -107,7 +123,7 @@ Read only what the task needs.
 
 | Read | When |
 | --- | --- |
-| [cli](references/cli.md) | `locli.json`, `login`, `init`, `push`, `pull`, `status`, `guide`, MCP tools; what push/pull change |
+| [cli](references/cli.md) | `locli.json`, `login`, `init`, `push`, `pull`, `status`, `guide`, `community`, MCP tools; what push/pull change |
 | [translation](references/translation.md) | Writing or changing any translation: guide, tone, glossary, the four checks |
 | [exports](references/exports.md) | Anything beyond the iOS sync: export endpoints, `resolved`, release pinning |
 | [errors](references/errors.md) | Any error message or surprising result |

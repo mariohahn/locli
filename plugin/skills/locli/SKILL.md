@@ -1,37 +1,150 @@
 ---
 name: locli
-description: "Use when an app gets or changes user-facing text (UI labels, errors, emails, notifications, App Store/Google Play listings) or when adding localization/i18n/translations to an iOS, Android, web or backend project: set up locli, push new keys and translations, pull approved releases. Never hard-code UI strings."
+description: "Use when building or changing an app with user-facing text, or when it consumes locli (formerly Localize): adding or renaming user-facing strings (Localizable.xcstrings, strings.xml, web/backend ICU JSON), npx @locli/cli init/login/push/pull/status and its MCP tools, translations, platform variants, identifiers and duplicate-key merges, placeholders, plurals, App Store/Google Play listing texts, releases, and fixing locli errors such as placeholder 422, 403 roles or blocked releases. Not for developing or deploying locli itself."
 ---
 
-# locli
+# Using locli in applications
 
-locli holds the app's texts per language and platform. You add keys and translations;
-a human project owner approves each release; the app ships only approved releases.
+locli (formerly Localize) holds an app's texts per language and platform. Apps get
+them through `npx @locli/cli pull` or platform exports, from **approved releases**. This skill covers
+consuming locli, not developing or deploying it.
 
-## If the repository has no `locli.json` yet
+This file and `references/` are the canonical source; global installs only link
+here, and `@locli/cli` ships a generated copy named `locli` (installed by `init`). Keep instructions in English; quoted UI labels and examples may stay German.
 
-1. Make sure the platform's catalog exists (String Catalog `.xcstrings` in Xcode,
-   Android `res/values/strings.xml`, web/backend `messages/<locale>.json`).
-2. Run `npx @locli/cli init`. It links or creates the project and installs the full
-   locli skill into `.agents/skills/locli/` plus a block in `AGENTS.md`.
-3. Continue with that installed skill; it is the detailed reference.
+## Before starting
 
-## If it already has `locli.json`
+1. Look for `locli.json` (or an older `Config/localize.json` wrapper), the catalogs and
+   localization helpers. Confirm server, project slug, source language and platforms
+   instead of guessing them. No config and the app has user-facing text: run
+   `npx @locli/cli init` ([CLI](references/cli.md)).
+2. Use the app's existing workflow and only the commands in [CLI](references/cli.md).
+   With the MCP server connected, prefer its tools (`locli_find_texts`,
+   `locli_add_texts`, `locli_push`, `locli_pull`, `locli_status`, `locli_areas`, `locli_guide`, `locli_context`).
+3. Authentication is the user's: on "Not logged in" ask them to run
+   `npx @locli/cli login` (browser approval); CI provides `LOCLI_TOKEN`.
+   Never read credential files, print tokens or store them in code or Git.
+4. On any CLI or API error, look it up in [errors](references/errors.md) first.
 
-Follow `.agents/skills/locli/SKILL.md` (or `.claude/skills/locli/`). In short:
-for a new feature run `npx @locli/cli areas --feature <name>` and use the area it names; reuse a key with the same meaning, otherwise add a `lower_snake_case` key named after
-the feature area with a comment; `npx @locli/cli push` (never overwrites existing
-texts); tell the user how many texts wait for a release; after they approve it,
-`npx @locli/cli pull`. Before translating, read `npx @locli/cli guide` (tone,
-glossary) and `npx @locli/cli context` (where each key is used and how long it may be) and
-follow them. The MCP tools `locli_areas`, `locli_guide`, `locli_context`, `locli_find_texts`,
-`locli_add_texts`, `locli_status`, `locli_push` and `locli_pull` do the same from
-inside the session.
+## Common tasks
 
-## Authentication is the user's
+**Build a feature with texts** ("build the login screen"): first
+`npx @locli/cli areas --feature login` (MCP `locli_areas`) to get the existing area to use
+or the new one to start ([identifiers](references/identifiers.md#starting-a-feature)); then
+add each text as below with that prefix.
 
-On "not logged in", ask the user to run `npx @locli/cli login` (browser approval,
-free sign-up). Never read credential files or print tokens. Never approve or publish
-a release yourself.
+**Add or change an app text**
+1. Search the catalog and locli (`locli_find_texts`, `status`) for an existing key with the same meaning and
+   reuse it. Same wording is not the same meaning ("Open" a file vs. a store).
+2. A new key gets a `lower_snake_case` identifier whose first segment is the feature
+   area, e.g. `receipt_import_title` ([identifiers](references/identifiers.md)).
+   iOS/Android texts use printf; two or more placeholders are numbered (`%1$@`, `%2$lld`).
+   Web/backend-only keys use ICU names (`{used} of {limit} seats used`). A count that
+   changes grammar becomes a plural ([plurals](references/plurals.md)).
+3. Add the entry to the source catalog (`.xcstrings`, `strings.xml`, JSON) with a comment
+   saying where the text appears and what each placeholder holds (`.xcstrings`
+   `comment`, XML comment), plus every language you can provide; use it through the
+   app's accessor. Platform details: integration guides below.
+4. `npx @locli/cli push` from the branch you work on; new keys join that branch's
+   [feature](references/features.md). An **existing** text is changed in locli,
+   because `push` never overwrites it.
+5. Tell the user how many texts wait for a release. They approve it; then
+   `npx @locli/cli pull`.
 
-Full guide: https://locli.dev/docs/agents.md
+**Translate texts or add a language**: read the project's guide first
+(`npx @locli/cli guide`, MCP `locli_guide`: tone per language, glossary, terms that stay
+as written) and where each key is used (`npx @locli/cli context`, MCP `locli_context`: toolbar
+item, button, title, push notification … and its length budget), then follow [translation](references/translation.md): translate from the
+source, check mechanically, back-translate, have another model review, look at the UI.
+
+**Moderate community suggestions** (the project has a public catalog at `locli.dev/c/<slug>`):
+`npx @locli/cli community` (MCP `locli_community_suggestions`), check each against the guide,
+placeholders and length, then accept, reject or hide it ([CLI](references/cli.md#community-suggestions)).
+Accepted texts wait for the next approved release.
+
+**Move dotted iOS/Android keys to `_`** (`push` refuses new ones, `init` and `status` mention old ones):
+run `npx @locli/cli keys normalize --dry-run` and show the user the result, then run it without
+`--dry-run`. It renames the keys in locli (texts, translations and history move along), merges them
+into an existing `_` key with the same texts, renames them in the `.xcstrings` files and replaces the
+exact string literals in `.swift`/`.m` files. Then build the app, fix what the build reports
+(generated accessors, string constants built from parts), check the listed conflicts, Android
+resource names and web lookups, and commit catalog and code together.
+
+**Fix an error**: [errors](references/errors.md) lists every CLI/API message with cause and fix.
+
+**Integrate an app or a new platform**: pick the guide from the table below.
+
+**Rename keys or merge two names for the same text**: [merge workflow](references/merge.md).
+
+**App Store / Google Play copy**: [store listings](references/store-listings.md), never the app catalog.
+
+## Rules that always apply
+
+- **One key per meaning, on every platform.** Same identifier on iOS, Android, web
+  and backend. Assigning a platform exports the shared text; add a platform variant
+  only when its wording must differ. No `_ios`/`_android` suffixes, no dotted copy
+  next to an underscore one.
+- **A key is an identifier, never the visible text.** `team_seats_used` → "{used} of
+  {limit} seats used". The first segment is the feature and becomes the area in locli.
+  Keying by the sentence (`t("Projekt wechseln: {name}")`) gives every text its own
+  area, breaks renames and review; `push` refuses such new keys (`--allow-text-keys`
+  only for catalogs keyed by text on purpose, e.g. SwiftUI `Text("…")`).
+- **No keys without text.** A value that is only placeholders (`%@ %@`, `{a}: {b}`)
+  has nothing to translate. In SwiftUI, don't interpolate an icon and a text into one
+  `Text("\(Image(…)) \(title)")` (it extracts `%@ %@`); use `Label` or an `HStack`.
+  Brand names and other words that never change get "Don't translate" in Xcode
+  (`shouldTranslate: false`) or `translatable="false"` on Android. `push` skips all of
+  these; locli never counts such keys as missing. Keep a placeholder-only key only
+  when languages really reorder it (`%1$@ (%2$@)` vs `%2$@ (%1$@)`).
+- **No dots on iOS or Android.** Keys used there are `_` only (`common_archived`), because
+  Android resource names can't hold dots and the identifier is the same everywhere. locli and
+  `push` refuse new dotted keys. Legacy ones: `npx @locli/cli keys normalize --dry-run`, then
+  without `--dry-run` (see the task below). Text used as a key ("Gespeichert.") and web-only
+  nested JSON paths keep their dots. `lower_snake_case` is the convention for new keys.
+- **Placeholders are the app's contract.** Translations may reorder arguments but
+  not drop, add or retype them (`%d` ≠ `%lld`, `{n}` ≠ `{n, number}`). printf counts
+  for iOS, Android and texts shared with them; ICU arguments (`{name}`) for web and
+  backend variants and for keys assigned only to web/backend, compared by name. A
+  key also on iOS keeps printf: `{name}` there is literal text. A 422 means: fix the text.
+- **Plurals belong to the key.** Define forms and the integer selector once in
+  locli (**Mengenabhängig (Plural)**, **Menge steht in**); each platform gets its
+  format and the app must call its plural-aware API with the real count. Never
+  hand-code `count == 1` rules.
+- **The guide is binding.** Tone per language and glossary terms from `locli guide` apply
+  to every translation; *keep* terms stay exactly as written. Fix the glossary issues
+  it lists instead of leaving them for review.
+- **Releases decide what ships.** `pull` and builds use approved releases; the
+  working state is for local checks. Only a project owner approves and publishes.
+  Agents never approve or publish; they report what is waiting.
+
+## References
+
+Read only what the task needs.
+
+| Read | When |
+| --- | --- |
+| [cli](references/cli.md) | `locli.json`, `login`, `init`, `push`, `pull`, `status`, `guide`, `community`, MCP tools; what push/pull change |
+| [translation](references/translation.md) | Writing or changing any translation: guide, tone, glossary, the four checks |
+| [exports](references/exports.md) | Anything beyond the iOS sync: export endpoints, `resolved`, release pinning |
+| [errors](references/errors.md) | Any error message or surprising result |
+| [identifiers](references/identifiers.md) | Naming a key, areas, checks before creating one |
+| [merge](references/merge.md) | Renames, duplicate dotted/underscore keys |
+| [features](references/features.md) | Branch grouping, `--branch`, CI variables, cleanup |
+| [store-listings](references/store-listings.md) | App Store / Google Play texts and limits |
+| [plurals](references/plurals.md) | Any plural work; then the platform's plural guide |
+
+| Platform | Integration | Plurals |
+| --- | --- | --- |
+| iOS | [Swift package, app and extensions, sync configuration](references/ios-integration.md) | [String Catalog plurals in Swift/SwiftUI](references/ios-plurals.md) |
+| Android | [Resource module, Gradle, export ingestion](references/android-integration.md) | [Resource plurals in Kotlin/Compose](references/android-plurals.md) |
+| Web | [Catalog module, locale resolution, SSR](references/web-integration.md) | [ICU in frontend code](references/web-plurals.md) |
+| Backend | [Catalog artifacts, recipient locales](references/backend-integration.md) | [ICU in server messages](references/backend-plurals.md) |
+
+Names, paths and versions in examples are illustrative; match the actual app.
+
+## Completing a task
+
+Report which catalogs, configuration and accessors changed and which targets were
+verified. Keep catalog/syntax checks, builds and runtime checks of languages and
+plurals apart. A missing sync pipeline for a platform is a gap to name, not a
+reason to claim an unsupported command exists.

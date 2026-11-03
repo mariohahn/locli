@@ -36,7 +36,7 @@ export const TOKEN = 'lcz_test_token';
 
 /**
  * @param {{ slug?: string, defaultLocale?: string, platforms?: string[], locales?: string[], keys?: any[], values?: any[],
- *   releases?: string[], exports?: Record<string, any>, device?: { steps: number[] }, guide?: any, issues?: any[] }} [seed]
+ *   releases?: string[], exports?: Record<string, any>, device?: { steps: number[] }, guide?: any, issues?: any[], community?: any, suggestions?: any[] }} [seed]
  */
 export async function fakeServer(seed = {}) {
   const state = {
@@ -53,6 +53,8 @@ export async function fakeServer(seed = {}) {
     revoked: /** @type {string[]} */ ([]),
     guide: seed.guide ?? null,
     issues: seed.issues ?? [],
+    community: seed.community ?? { enabled: false, locales: [], path: `/c/${seed.slug ?? 'app'}`, openSuggestions: 0 },
+    suggestions: seed.suggestions ?? [],
   };
   if (seed.slug) {
     const project = { id: randomUUID(), name: seed.slug, slug: seed.slug, defaultLocale: seed.defaultLocale ?? 'en', platforms: seed.platforms ?? ['ios', 'android', 'web'] };
@@ -151,6 +153,36 @@ export async function fakeServer(seed = {}) {
     if (sub === 'GET /guide') return state.guide ? send(200, state.guide) : send(404, { error: true, reason: 'no route' });
     if (sub === 'GET /guide/issues') return state.guide ? send(200, state.issues) : send(404, { error: true, reason: 'no route' });
     if (sub === 'PUT /guide') { state.guide = body; return send(200, body); }
+    if (sub === 'POST /keys/normalize') {
+      // Like the server: dotted iOS/Android identifiers → _, merged into an existing key (no conflict logic here).
+      const plan = { renamed: [], merged: [], conflicts: [], applied: Boolean(body?.apply) };
+      for (const key of [...state.keys].sort((a, b) => a.key.localeCompare(b.key))) {
+        if (!/^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$/.test(key.key) || !key.platforms.some((p) => p === 'ios' || p === 'android')) continue;
+        const to = key.key.replaceAll('.', '_');
+        const target = state.keys.find((k) => k.key === to);
+        if (target) {
+          plan.merged.push({ from: key.key, into: to, platforms: key.platforms });
+          if (body?.apply) { target.platforms = [...new Set([...target.platforms, ...key.platforms])]; state.keys = state.keys.filter((k) => k !== key); }
+        } else {
+          plan.renamed.push({ from: key.key, to, platforms: key.platforms });
+          if (body?.apply) key.key = to;
+        }
+      }
+      return send(200, plan);
+    }
+    if (sub === 'GET /community') return send(200, state.community);
+    if (sub === 'GET /community/suggestions') {
+      const status = url.searchParams.get('status') ?? 'open';
+      const locale = url.searchParams.get('locale');
+      return send(200, state.suggestions.filter((s) => s.status === status && (!locale || s.locale === locale)));
+    }
+    const reviewMatch = /^POST \/community\/suggestions\/([^/]+)\/(accept|reject)$/.exec(sub);
+    if (reviewMatch) {
+      const suggestion = state.suggestions.find((s) => s.id === reviewMatch[1]);
+      if (!suggestion) return send(404, { error: true, reason: 'Suggestion not found.' });
+      suggestion.status = reviewMatch[2] === 'accept' ? 'accepted' : body?.hide ? 'hidden' : 'rejected';
+      return reviewMatch[2] === 'accept' ? send(200, { id: randomUUID(), value: suggestion.text }) : send(204);
+    }
     if (sub === 'GET /releases') return send(200, [...state.releases].reverse());
     if (sub === 'GET /releases/diff') return send(200, { latest: state.releases.at(-1) ?? null, changes: state.keys.map((k) => ({ key: k.key })), missing: [], placeholderErrors: [], reviews: [] });
     const exportMatch = /^GET \/(export|resolved)\/(\w+)$/.exec(sub);

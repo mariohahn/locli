@@ -21,17 +21,19 @@ and waits until you approve. The token is stored in $XDG_CONFIG_HOME/locli/crede
   whoami: { summary: 'Show the signed-in account', usage: 'locli whoami [--api-url URL] [--json]', options: { json: 'boolean' }, details: '' },
   init: {
     summary: 'Detect text files, write locli.json and agent instructions, create the project',
-    usage: 'locli init [--name NAME] [--slug SLUG] [--source LANG] [--target platform:format:path]… [--icon FILE | --no-icon] [--yes] [--no-agent-files]',
-    options: { name: 'string', slug: 'string', source: 'string', target: 'list', icon: 'string', 'no-icon': 'boolean', yes: 'boolean', y: 'boolean', 'no-agent-files': 'boolean' },
+    usage: 'locli init [--name NAME] [--slug SLUG] [--source LANG] [--target platform:format:path]… [--icon FILE | --no-icon] [--yes] [--no-agent-files] [--skill]',
+    options: { name: 'string', slug: 'string', source: 'string', target: 'list', icon: 'string', 'no-icon': 'boolean', yes: 'boolean', y: 'boolean', 'no-agent-files': 'boolean', skill: 'boolean' },
     details: `Non-interactive unless run in a terminal without --yes. Detects *.xcstrings (ios),
 **/src/main/res/values/strings.xml (android) and messages|locales|i18n|lang/{locale}.json (web).
 --target overrides detection (repeatable), e.g. web:json:messages/{locale}.json,
 android:android-xml:app/src/main/res, ios:xcstrings:App/Localizable.xcstrings,
 backend:json:resources/i18n/{locale}.json.
 Writes AGENTS.md (block between <!-- locli:start --> and <!-- locli:end -->), adds @AGENTS.md
-to an existing CLAUDE.md and installs the skill to .agents/skills/locli (+ .claude/skills/locli).
+to an existing CLAUDE.md. The skill stays out of the repository (the Claude Code plugin and
+https://locli.dev/docs/agents.md carry it); --skill copies it to .agents/skills/locli
+(+ .claude/skills/locli) for agents that should have it in the repository.
 A project without an icon gets the app's own: the iOS AppIcon, the Android launcher icon or the
-web app icon (scaled to 128 px with sips on macOS). --icon FILE sets or replaces it, --no-icon skips it.
+web app icon (scaled to 128 px with sips on macOS). --icon FILE sets or replaces it, --no-icon skips it (only when the user asks for that).
 Safe to rerun.`,
   },
   push: {
@@ -73,6 +75,30 @@ Lists every translation that doesn't follow the glossary.
 --set FILE replaces the guide with a JSON file ({ "tone": { "de": "du" }, "terms": [{ "term": "Pro",
 "keep": true }, { "term": "Release", "translations": { "de": "Release" } }] }); the output of
 --json is accepted too. Needs the editor role or a write token.`,
+  },
+  community: {
+    summary: 'List what the community suggested in the public catalog, and accept, reject or hide it',
+    usage: 'locli community [--status open|accepted|rejected|hidden] [--locale CODE] [--json] [--accept ID | --reject ID | --hide ID] [--note TEXT]',
+    options: { status: 'string', locale: 'string', json: 'boolean', accept: 'string', reject: 'string', hide: 'string', note: 'string' },
+    details: `The public catalog (locli.dev/c/<project>) lets anyone suggest translations of the released
+texts, vote and discuss, without an account. Without options this lists the open suggestions,
+the most voted first, with the source, today's text and the discussion.
+--accept ID makes the suggestion the working text (status translated); it ships with the next
+approved release. --reject ID declines it, --hide ID removes spam or abuse from the public page.
+Check placeholders, the glossary (locli guide) and tone before accepting. Needs the editor role.`,
+  },
+  keys: {
+    summary: 'Rename dotted iOS/Android keys to _ in locli, the String Catalog and the code',
+    usage: 'locli keys normalize [--dry-run] [--no-code] [--json]',
+    options: { 'dry-run': 'boolean', 'no-code': 'boolean', json: 'boolean' },
+    details: `Keys used on iOS or Android are one identifier everywhere, and Android resource names can't
+contain dots, so locli refuses new keys like common.archived (use common_archived). normalize moves the
+existing ones: it renames them in locli (texts, translations and history move along), merges them into
+an underscore key that already exists when both hold the same texts (different wording on different
+platforms becomes a platform text), renames them in the .xcstrings files and replaces the exact string
+literals ("common.archived") in .swift/.m files. Keys with two different texts for one platform are listed
+as conflicts and left alone. Text used as a key ("Gespeichert.") is never touched, nor web-only keys
+(nested JSON paths). Run --dry-run first; --no-code leaves the source files alone. Needs the editor role.`,
   },
   context: {
     summary: 'Show where each key is used in the code, as what, and translations that are too long',
@@ -157,12 +183,15 @@ export async function main(argv, overrides = {}) {
   const definition = COMMANDS[command];
   if (!definition) { ctx.info(`Unknown command: ${command}\n\n${HELP}`); return 2; }
   try {
-    const flags = parseArgs(rest, definition.options);
+    // `keys normalize`: the action is the one positional argument.
+    const action = command === 'keys' && rest[0] && !rest[0].startsWith('-') ? rest[0] : undefined;
+    const flags = parseArgs(action ? rest.slice(1) : rest, definition.options);
     if (flags.help) { printCommandHelp(ctx, command); return 0; }
     if (flags.y) flags.yes = true;
     if (flags.noBrowser) flags.browser = false;
     if (flags.noAgentFiles) flags.agentFiles = false;
     if (flags.noIcon) flags.icon = false;
+    if (flags.noCode) flags.code = false;
     switch (command) {
       case 'login': await (await import('./commands/login.js')).login(ctx, flags); break;
       case 'logout': await (await import('./commands/login.js')).logout(ctx, flags); break;
@@ -174,6 +203,8 @@ export async function main(argv, overrides = {}) {
       case 'areas': await (await import('./commands/areas.js')).areas(ctx, flags); break;
       case 'guide': await (await import('./commands/guide.js')).guide(ctx, flags); break;
       case 'context': await (await import('./commands/context.js')).context(ctx, flags); break;
+      case 'community': await (await import('./commands/community.js')).community(ctx, flags); break;
+      case 'keys': await (await import('./commands/keys.js')).keys(ctx, flags, action); break;
       case 'mcp': await (await import('./mcp.js')).serve(overrides); break;
       default: break;
     }

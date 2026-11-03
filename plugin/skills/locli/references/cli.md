@@ -1,0 +1,163 @@
+# CLI (`@locli/cli`)
+
+One CLI for every stack: `npx @locli/cli <command>` (Node 18+, no install needed).
+It syncs iOS String Catalogs, Android `strings.xml` and web/backend JSON. There is no
+`merge`, `rename` or `--platform` command.
+
+## Setup and authentication
+
+```sh
+npx @locli/cli init
+```
+
+`init` detects the text files, writes `locli.json`, writes the locli block into
+`AGENTS.md` (between `<!-- locli:start -->` and `<!-- locli:end -->`), adds `@AGENTS.md`
+to an existing `CLAUDE.md` and, when logged in, creates the project, its languages and
+platforms. A project without an icon gets the app's own (iOS AppIcon, Android launcher
+icon or web `apple-touch-icon`/`icon.png`, scaled to 128 px with `sips` on macOS); an icon
+someone chose in locli stays. The app repository gets no copy of this skill (the Claude Code
+plugin and https://locli.dev/docs/agents.md carry it); `--skill` copies it to
+`.agents/skills/locli/` (linked from `.claude/skills/locli/`) when a team wants it there. It is safe to rerun. Options: `--name`, `--slug`, `--source LANG`,
+`--target platform:format:path` (repeatable, overrides detection), `--icon FILE` (sets or
+replaces the icon), `--no-icon` (only when the user asks: the icon is how people find the
+project in locli), `--yes`, `--no-agent-files`.
+
+Detection: `*.xcstrings` (ios), `**/src/main/res/values/strings.xml` (android),
+`messages|locales|i18n|lang/{locale}.json` (web). If the app has no catalog yet, create
+the platform's standard one first, or pass `--target`.
+
+Authentication is the user's. When a command says "Not logged in", ask the user to run
+`npx @locli/cli login`: it prints a code, opens the browser, and the user signs in (or
+signs up) and approves. The token is stored per server in
+`~/.config/locli/credentials.json` (mode 0600). CI sets `LOCLI_TOKEN` from its secrets.
+Never read the credentials file, print tokens or commit them. `whoami` shows the account,
+`logout` revokes the token.
+If the user is logged in (`whoami` works in their terminal) but the agent's shell still says not logged in,
+the agent tool runs with its own `XDG_CONFIG_HOME` (OpenCode, sandboxes). locli 0.1.8+ also reads
+`~/.config/locli/credentials.json`; with an older CLI run `npx @locli/cli@latest`. Don't copy or read the file.
+
+## `locli.json`
+
+```json
+{
+  "project": "example-app",
+  "sourceLanguage": "en",
+  "targets": [
+    { "platform": "ios", "format": "xcstrings", "path": "App/Localizable.xcstrings" },
+    { "platform": "android", "format": "android-xml", "path": "app/src/main/res" },
+    { "platform": "web", "format": "json", "path": "messages/{locale}.json" }
+  ]
+}
+```
+
+- `project` is the slug, `sourceLanguage` must match the catalogs and locli.
+- `apiURL` is optional (default `https://locli.dev`; `LOCLI_API_URL` or `--api-url`
+  override it).
+- Android: `path` is the `res/` directory; optional `file` (default `strings.xml`).
+- JSON (`web`, `backend`): `path` needs `{locale}`; nested objects become dotted keys;
+  optional `keyPrefix` for i18next namespaces.
+- Paths are relative to `locli.json`.
+
+## Commands
+
+| Command | Effect |
+| --- | --- |
+| `login [--no-browser]` / `logout` / `whoami [--json]` | Browser approval, revoke, show the account. |
+| `init` | See above. |
+| `push [--dry-run] [--branch B] [--target platform] [--allow-text-keys]` | Add what locli lacks (see below). |
+| `pull [--draft] [--release NAME] [--target platform]` | Write the latest approved (or named) release. |
+| `status [--json]` | Languages, missing translations, open features, unreleased changes, glossary issues. |
+| `areas [--feature NAME] [--json]` | Feature areas with key counts; with `--feature` the area to use or start. |
+| `guide [--json] [--set FILE]` | Translation guide (tone, glossary) and the texts that break it; `--set` replaces it. |
+| `context [--key KEY_OR_AREA] [--target P] [--json]` | Where each key is used in the code on every platform, its role (toolbar item, button, push notification …) and length budget, translations that are too long, keys not found. Local, no login. |
+| `keys normalize [--dry-run] [--no-code] [--json]` | Move dotted iOS/Android keys to `_` in locli, the String Catalog and exact Swift/Objective-C literals; merges into an existing `_` key, lists conflicts. |
+| `community [--status S] [--locale CODE] [--json] [--accept ID \| --reject ID \| --hide ID] [--note TEXT]` | Suggestions from the public community catalog, most voted first, with source, today's text and discussion; decide one. |
+| `mcp` | MCP server on stdio. |
+
+Every command takes `--api-url`, `--config FILE` (or `LOCLI_CONFIG`) and `--help`.
+Exit codes: 0 ok, 1 error, 2 usage error.
+
+## push
+
+- Writes; use `--dry-run` to see what it would send. Creates missing keys and
+  languages, assigns the target's platform, uploads missing values and fills empty
+  context from catalog comments. Push only what belongs to the task; the project is
+  shared.
+- Never overwrites an existing value in locli; edit existing texts in the web app.
+- Matches exact identifiers: `account.login` and `account_login` are different keys.
+  Apply the [identifier convention](identifiers.md) first.
+- Refuses new keys that look like visible text (spaces, punctuation, braces, non-ASCII)
+  with exit code 2 and nothing written, and warns about new keys that are not
+  `lower_snake_case`. `--allow-text-keys` is only for catalogs keyed by text on purpose.
+- Sends large catalogs in batches of 100 keys.
+- Before uploading (and with `--dry-run`) it checks the files against the translation
+  guide's glossary and warns about every text that drops a term. Fix them in the files first:
+  a text in locli is never overwritten. Warnings never block a push; `locli guide` lists the
+  ones already in locli.
+- It scans the code like `locli context` and warns about texts longer than their role allows
+  (a toolbar item about 12 characters). Keys without a comment get the role as their context
+  ("Used as a toolbar item: …"); a later push refreshes only such generated comments.
+- A platform that is not enabled for the project needs an owner; the CLI says so.
+- Android: string arrays are created as array keys. Strings with markup (`<b>`, `<a>`)
+  are skipped with a warning.
+- JSON: a top-level ICU plural on `count` or `argN` becomes a plural key; other ICU
+  messages are pushed as plain text.
+- New keys pushed from a Git feature branch join that branch's
+  [feature](features.md); a push from `main` marks features merged. The branch comes
+  from `--branch`, `LOCLI_BRANCH`, CI variables or Git.
+
+## pull
+
+- Resolves the latest release once and uses that name for every target, so all
+  platforms get the same release.
+- Replaces only keys that locli exports; local-only keys and other file content stay.
+  Local edits to exported keys are lost, so push or move them to locli first.
+  Deletions and renames in locli are not propagated.
+- Android writes one `values-<qualifier>/` directory per language.
+- iOS: refuses an empty catalog or a changed source language.
+- Without any release it fails with a hint; do not silently switch to `--draft`.
+  `--draft` writes the unapproved working state, for local checks only.
+- Changes reach users with the next app build, not at runtime.
+
+After pulling, review the diff, build the affected targets and check the changed texts
+in the languages concerned. Problems: [errors](errors.md).
+
+## MCP server
+
+`npx -y @locli/cli mcp` exposes `locli_status`, `locli_areas` (the area a feature's
+keys belong to), `locli_guide` (tone, glossary and its
+issues; read before translating), `locli_context` (where each key is used, its role and
+length budget, too-long translations), `locli_find_texts` (search keys and
+values before creating one), `locli_add_texts` (create keys with values or plural
+forms), `locli_push`, `locli_pull`, `locli_community_suggestions` and
+`locli_community_review` (see below). It reads `locli.json` from the working directory.
+Claude Code: `claude mcp add --scope project locli -- npx -y @locli/cli mcp`.
+
+## Community suggestions
+
+A project can open a public catalog at `https://locli.dev/c/<slug>` (owners switch it on under
+**Community** and choose the languages). Anyone can suggest translations of the latest
+release's plain texts, vote and discuss, without an account; plural, array and store texts
+are not offered. Suggestions with broken placeholders are refused on submit.
+
+Moderating (editor role or write token): `locli community` (MCP `locli_community_suggestions`)
+lists the open ones, then `--accept ID`, `--reject ID` or `--hide ID` (MCP
+`locli_community_review`). Accepting makes the suggestion the working text with status
+`translated`; it ships only with the next approved release. Before accepting, check the
+glossary and tone (`locli guide`) and the length budget (`locli context`); among competing
+suggestions prefer the clearly better wording, not only the score. Hide spam and abuse, also
+in the discussion (web app). Agents never approve the release.
+
+## Older setups
+
+Apps set up before `@locli/cli` may call `Scripts/localize.sh`, which runs
+`scripts/localize-ios.py` (or the `scripts/locli` wrapper) from a Localize checkout with
+`Config/localize.json` and `LOCALIZE_TOKEN`. It syncs iOS catalogs only, with the same
+push/pull rules. Keep using it where it exists, or migrate with `npx @locli/cli init`
+(same project slug) and remove the wrapper in the same change.
+
+## Other ways in
+
+File import in the web app (JSON, `.strings`, Android XML) and Google Sheets import
+can overwrite existing values, unlike `push`. Align identifiers before importing:
+different names become separate keys.

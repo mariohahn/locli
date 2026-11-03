@@ -13,10 +13,13 @@ Read [identifiers and areas](identifiers.md) first: this workflow moves keys to 
 | Identical wording, different meaning | Keep separate keys with distinct semantic names. |
 | Plain/plural/array types or quantity selectors disagree | Resolve the intended meaning/structure before merging. |
 
-**Current tooling:** The CLI has no `merge` or `rename` command. There is also no
-dedicated history-preserving merge endpoint. Renaming in the editor does not merge
-into an occupied identifier. The following is an application workflow, not an
-existing automated migration command.
+**Dotted → `_` is automated:** `npx @locli/cli keys normalize` renames dotted iOS/Android
+keys (`account.login` → `account_login`) in locli, the String Catalog and the Swift code,
+and merges into an existing `_` key when every platform keeps its text (different wording on
+disjoint platforms becomes a platform text); history moves along. Pairs with two different
+texts for one platform are reported as conflicts and left for this workflow.
+For any other rename there is no CLI command; renaming in the editor does not merge into an
+occupied identifier. The following is the application workflow for those cases.
 
 ## Application-side merge workflow
 

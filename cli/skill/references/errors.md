@@ -9,6 +9,7 @@ delete placeholders to silence a check, or approve releases on the user's behalf
 | Message | Cause | Action |
 | --- | --- | --- |
 | `Not logged in. Ask the user to run npx @locli/cli login …` | No stored token for this server and no `LOCLI_TOKEN`. | Ask the user to run `npx @locli/cli login` themselves (browser approval), or to provide `LOCLI_TOKEN` in CI. `init` still writes `locli.json`; rerun it after login. |
+| `Not logged in` although `whoami` works in the user's terminal | The agent tool sets its own `XDG_CONFIG_HOME`, so the CLI looked in another config folder. | Use `npx @locli/cli@latest` (0.1.8+ falls back to `~/.config/locli/credentials.json`). Never copy or read the credentials file. |
 | `The locli token was rejected (expired or revoked) …` | 401: token invalid. | Same as above. Never read or print credential files. |
 | `The login code expired. Run npx @locli/cli login again.` | The browser approval did not happen within the code's lifetime (`expired_token`). | The user runs `login` again. |
 | `The login was denied in the browser.` | The user clicked deny (`access_denied`). | Ask the user whether to log in; do not retry on your own. |
@@ -25,7 +26,7 @@ delete placeholders to silence a check, or approve releases on the user's behalf
 | `Project "<slug>" not found on <server> …` (older CLI: `Project missing; run init first`) | Slug not visible to this account. | Same check. If the project exists, `init` fails with `409 A project with this slug already exists.`; do not change the slug to work around missing membership. |
 | `No release yet. Ask the project owner to approve one …` (older CLI: `HTTP 404 … This project has no release yet.`) on `pull` | No approved release. | Ask the user to approve one, or use `pull --draft` for local checks only. |
 | `The <platform> platform is not enabled for project "<slug>", and only a project owner can enable it …` | `push`/`init` needs a platform the project has not enabled; the account is not an owner. | Ask an owner to enable it in the project settings. |
-| `Project <slug> uses source language <a>, but locli.json says <b>` / `Remote project uses a different source language …` | Config and project disagree. | Fix `sourceLanguage` in `locli.json`; never change the project's language to match. |
+| `Project <slug> uses source language <a>, but locli.json says <b>` / `Remote project uses a different source language …` | Config and project disagree, often because the user picked another base language in locli. | Fix `sourceLanguage` in `locli.json` to the project's language; never change the project's language to match. Marking a language as base in locli moves the project's source language with it. |
 
 ## Texts and placeholders
 
@@ -47,7 +48,10 @@ delete placeholders to silence a check, or approve releases on the user's behalf
 | Message | Cause | Action |
 | --- | --- | --- |
 | `409 A key with this identifier already exists.` | Duplicate identifier. | Reuse the existing key; see [identifiers and merging](identifiers.md). |
-| `422 <key>: Android requires a key containing only letters, digits and underscores…` | Dotted or otherwise invalid name assigned to Android. | Use the `lower_snake_case` identifier; rename deliberately. |
+| `422 <key>: keys used on iOS or Android can't contain dots. Use <key_with_underscores>…` / CLI `N new keys contain dots` | Dotted identifier on iOS or Android. | New keys: name them with `_`. Existing ones in the catalog: `npx @locli/cli keys normalize --dry-run`, then without `--dry-run`. |
+| `keys normalize`: `<key> → <target> not merged: …` | Both keys have different texts for the same language and platform. | Decide in locli which text is right (or use the merge workflow), then rerun. |
+| `422 android: <a> and <b> both export as <name>` | Two keys map to the same Android resource name (a dotted key like `common.archived` is `common_archived` on Android). | Keep one of them: merge the duplicate in locli or rename one key deliberately. Never delete texts to get past it. |
+| Older server: `422 <key>: Android requires a key containing only letters, digits and underscores…` | Before 2026-11-03 dotted keys could not be linked to Android. | Retry; locli now exports them as `lower_snake_case` on Android. |
 | `422 <platform>: <a> and <b> both export as <name>.` | Two keys collide in one platform's export. | Merge or rename one of them. |
 | `400 A key has one identifier for all platforms…` | Per-platform names were sent. | Use one identifier; different meanings need separate keys. |
 
