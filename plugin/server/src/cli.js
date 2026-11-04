@@ -88,11 +88,16 @@ approved release. --reject ID declines it, --hide ID removes spam or abuse from 
 Check placeholders, the glossary (locli guide) and tone before accepting. Needs the editor role.`,
   },
   keys: {
-    summary: 'Rename dotted iOS/Android keys to _ in locli, the String Catalog and the code',
-    usage: 'locli keys normalize [--dry-run] [--no-code] [--json]',
+    summary: 'Move dotted iOS/Android keys to snake_case; delete keys that were never released',
+    usage: 'locli keys normalize [--dry-run] [--no-code] [--json]\n       locli keys delete KEY… [--dry-run] [--json]',
     options: { 'dry-run': 'boolean', 'no-code': 'boolean', json: 'boolean' },
-    details: `Keys used on iOS or Android are one identifier everywhere, and Android resource names can't
-contain dots, so locli refuses new keys like common.archived (use common_archived). normalize moves the
+    details: `delete removes keys that no release ever contained, in locli (texts, translations, history) and
+in every local catalog from locli.json, so the next push doesn't add them back. Keys locli doesn't know are
+removed from the catalogs only. A released key is refused and nothing is deleted: apps may still show it,
+so a project owner deletes it in the web editor. It warns about code that still uses a deleted key.
+
+Keys used on iOS or Android are one identifier everywhere, and Android resource names can't
+contain dots, so locli refuses new keys like adminDashboard.location (use admin_dashboard_location). normalize moves the
 existing ones: it renames them in locli (texts, translations and history move along), merges them into
 an underscore key that already exists when both hold the same texts (different wording on different
 platforms becomes a platform text), renames them in the .xcstrings files and replaces the exact string
@@ -183,9 +188,12 @@ export async function main(argv, overrides = {}) {
   const definition = COMMANDS[command];
   if (!definition) { ctx.info(`Unknown command: ${command}\n\n${HELP}`); return 2; }
   try {
-    // `keys normalize`: the action is the one positional argument.
+    // `keys normalize` / `keys delete KEY…`: the action, then key names, are positional.
     const action = command === 'keys' && rest[0] && !rest[0].startsWith('-') ? rest[0] : undefined;
-    const flags = parseArgs(action ? rest.slice(1) : rest, definition.options);
+    const args = action ? rest.slice(1) : rest;
+    const names = action === 'delete' ? args.filter((a) => !a.startsWith('-')) : [];
+    const flags = parseArgs(args.filter((a) => !names.includes(a)), definition.options);
+    if (names.length) flags.names = names;
     if (flags.help) { printCommandHelp(ctx, command); return 0; }
     if (flags.y) flags.yes = true;
     if (flags.noBrowser) flags.browser = false;

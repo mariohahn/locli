@@ -70,6 +70,14 @@ exact string literals in `.swift`/`.m` files. Then build the app, fix what the b
 (generated accessors, string constants built from parts), check the listed conflicts, Android
 resource names and web lookups, and commit catalog and code together.
 
+**Delete a key that was never released** (duplicate, typo, a dropped feature's text): run
+`npx @locli/cli keys delete KEY… --dry-run` (MCP `locli_delete_keys` with `dryRun`), show the
+user the list, then run it without `--dry-run`. It deletes the keys in locli and removes them from
+every catalog in `locli.json`, so the next `push` doesn't add them back; remove the uses the
+command lists in the code. A released key is refused and nothing is deleted: apps may still
+show it, so tell the user to delete it in the web editor. Never delete texts to get past an
+error (placeholders, plan limits, export collisions).
+
 **Fix an error**: [errors](references/errors.md) lists every CLI/API message with cause and fix.
 
 **Integrate an app or a new platform**: pick the guide from the table below.
@@ -96,10 +104,12 @@ resource names and web lookups, and commit catalog and code together.
   (`shouldTranslate: false`) or `translatable="false"` on Android. `push` skips all of
   these; locli never counts such keys as missing. Keep a placeholder-only key only
   when languages really reorder it (`%1$@ (%2$@)` vs `%2$@ (%1$@)`).
-- **No dots on iOS or Android.** Keys used there are `_` only (`common_archived`), because
-  Android resource names can't hold dots and the identifier is the same everywhere. locli and
-  `push` refuse new dotted keys. Legacy ones: `npx @locli/cli keys normalize --dry-run`, then
-  without `--dry-run` (see the task below). Text used as a key ("Gespeichert.") and web-only
+- **No dots on iOS or Android.** Keys used there are `lower_snake_case`
+  (`admin_dashboard_location`, not `adminDashboard.location`), because Android resource names
+  can't hold dots and the identifier is the same everywhere. locli and `push` refuse new dotted
+  keys. Legacy ones: `npx @locli/cli keys normalize --dry-run`, then without `--dry-run` (see the
+  task below); it also merges a camelCase key into its snake_case twin
+  (`adminDashboard_location` → `admin_dashboard_location`). Text used as a key ("Gespeichert.") and web-only
   nested JSON paths keep their dots. `lower_snake_case` is the convention for new keys.
 - **Placeholders are the app's contract.** Translations may reorder arguments but
   not drop, add or retype them (`%d` ≠ `%lld`, `{n}` ≠ `{n, number}`). printf counts

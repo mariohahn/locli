@@ -70,7 +70,8 @@ the agent tool runs with its own `XDG_CONFIG_HOME` (OpenCode, sandboxes). locli 
 | `areas [--feature NAME] [--json]` | Feature areas with key counts; with `--feature` the area to use or start. |
 | `guide [--json] [--set FILE]` | Translation guide (tone, glossary) and the texts that break it; `--set` replaces it. |
 | `context [--key KEY_OR_AREA] [--target P] [--json]` | Where each key is used in the code on every platform, its role (toolbar item, button, push notification …) and length budget, translations that are too long, keys not found. Local, no login. |
-| `keys normalize [--dry-run] [--no-code] [--json]` | Move dotted iOS/Android keys to `_` in locli, the String Catalog and exact Swift/Objective-C literals; merges into an existing `_` key, lists conflicts. |
+| `keys normalize [--dry-run] [--no-code] [--json]` | Move dotted iOS/Android keys to `lower_snake_case` (`adminDashboard.location` → `admin_dashboard_location`) in locli, the String Catalog and exact Swift/Objective-C literals; merges into an existing snake_case key (also camelCase keys with a snake_case twin), lists conflicts. |
+| `keys delete KEY… [--dry-run] [--json]` | Delete keys no release ever contained, in locli and in every catalog from `locli.json`; released keys are refused (nothing is deleted) and stay for the web editor; lists code that still uses a deleted key. |
 | `community [--status S] [--locale CODE] [--json] [--accept ID \| --reject ID \| --hide ID] [--note TEXT]` | Suggestions from the public community catalog, most voted first, with source, today's text and discussion; decide one. |
 | `mcp` | MCP server on stdio. |
 
@@ -112,7 +113,8 @@ Exit codes: 0 ok, 1 error, 2 usage error.
   platforms get the same release.
 - Replaces only keys that locli exports; local-only keys and other file content stay.
   Local edits to exported keys are lost, so push or move them to locli first.
-  Deletions and renames in locli are not propagated.
+  Deletions and renames in locli are not propagated (`keys delete` removes unreleased keys
+  from the local catalogs itself).
 - Android writes one `values-<qualifier>/` directory per language.
 - iOS: refuses an empty catalog or a changed source language.
 - Without any release it fails with a hint; do not silently switch to `--draft`.
@@ -129,7 +131,8 @@ keys belong to), `locli_guide` (tone, glossary and its
 issues; read before translating), `locli_context` (where each key is used, its role and
 length budget, too-long translations), `locli_find_texts` (search keys and
 values before creating one), `locli_add_texts` (create keys with values or plural
-forms), `locli_push`, `locli_pull`, `locli_community_suggestions` and
+forms), `locli_push`, `locli_pull`, `locli_delete_keys` (unreleased keys only, like
+`keys delete`), `locli_community_suggestions` and
 `locli_community_review` (see below). It reads `locli.json` from the working directory.
 Claude Code: `claude mcp add --scope project locli -- npx -y @locli/cli mcp`.
 

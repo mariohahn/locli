@@ -48,7 +48,8 @@ delete placeholders to silence a check, or approve releases on the user's behalf
 | Message | Cause | Action |
 | --- | --- | --- |
 | `409 A key with this identifier already exists.` | Duplicate identifier. | Reuse the existing key; see [identifiers and merging](identifiers.md). |
-| `422 <key>: keys used on iOS or Android can't contain dots. Use <key_with_underscores>…` / CLI `N new keys contain dots` | Dotted identifier on iOS or Android. | New keys: name them with `_`. Existing ones in the catalog: `npx @locli/cli keys normalize --dry-run`, then without `--dry-run`. |
+| `422 <key>: keys used on iOS or Android can't contain dots. Use <snake_case_key>…` / CLI `N new keys contain dots` | Dotted identifier on iOS or Android. | New keys: name them in `lower_snake_case`. Existing ones in the catalog: `npx @locli/cli keys normalize --dry-run`, then without `--dry-run`. |
+| `keys delete`: `N keys already released, nothing was deleted: <key> (<release>)` / `409 Released keys can't be deleted from the CLI` | A release contains the key, so apps may still show it. | Tell the user: a project owner deletes it in the web editor. Rerun `keys delete` with the unreleased keys only. |
 | `keys normalize`: `<key> → <target> not merged: …` | Both keys have different texts for the same language and platform. | Decide in locli which text is right (or use the merge workflow), then rerun. |
 | `422 android: <a> and <b> both export as <name>` | Two keys map to the same Android resource name (a dotted key like `common.archived` is `common_archived` on Android). | Keep one of them: merge the duplicate in locli or rename one key deliberately. Never delete texts to get past it. |
 | Older server: `422 <key>: Android requires a key containing only letters, digits and underscores…` | Before 2026-11-03 dotted keys could not be linked to Android. | Retry; locli now exports them as `lower_snake_case` on Android. |

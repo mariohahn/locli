@@ -13,9 +13,9 @@ Read [identifiers and areas](identifiers.md) first: this workflow moves keys to 
 | Identical wording, different meaning | Keep separate keys with distinct semantic names. |
 | Plain/plural/array types or quantity selectors disagree | Resolve the intended meaning/structure before merging. |
 
-**Dotted → `_` is automated:** `npx @locli/cli keys normalize` renames dotted iOS/Android
-keys (`account.login` → `account_login`) in locli, the String Catalog and the Swift code,
-and merges into an existing `_` key when every platform keeps its text (different wording on
+**Dotted → snake_case is automated:** `npx @locli/cli keys normalize` renames dotted iOS/Android
+keys (`adminDashboard.location` → `admin_dashboard_location`) in locli, the String Catalog and the
+Swift code, and merges into an existing snake_case key (also a camelCase key with a snake_case twin) when every platform keeps its text (different wording on
 disjoint platforms becomes a platform text); history moves along. Pairs with two different
 texts for one platform are reported as conflicts and left for this workflow.
 For any other rename there is no CLI command; renaming in the editor does not merge into an

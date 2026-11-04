@@ -73,7 +73,8 @@ The JSON schema is shipped as `@locli/cli/schema/locli.json`.
 | `areas [--feature NAME] [--json]` | List feature areas, or find the area a new feature's texts belong to |
 | `context [--key KEY_OR_AREA] [--json]` | Where each key is used in the code, as what (toolbar item, button, push notification …), and translations too long for it |
 | `guide [--json] [--set FILE]` | Show the translation guide (tone, glossary) and the texts that break it; `--set` replaces it |
-| `keys normalize [--dry-run] [--no-code]` | Rename dotted iOS/Android keys to `_` (common.archived → common_archived) in locli, the String Catalog and the Swift code |
+| `keys normalize [--dry-run] [--no-code]` | Rename dotted iOS/Android keys to `lower_snake_case` (adminDashboard.location → admin_dashboard_location) in locli, the String Catalog and the Swift code |
+| `keys delete KEY… [--dry-run] [--json]` | Delete keys that were never released, in locli and in every catalog from `locli.json`; released keys are refused and stay for the web editor |
 | `community [--status S] [--locale CODE] [--accept ID \| --reject ID \| --hide ID]` | Suggestions from the project's public community catalog, the most voted first; accept, reject or hide one |
 | `mcp` | Start the MCP server on stdio |
 
@@ -89,7 +90,7 @@ Environment variables:
 
 ## MCP server
 
-The MCP server provides eight tools:
+The MCP server provides eleven tools:
 
 - `locli_status`
 - `locli_areas`
@@ -99,6 +100,9 @@ The MCP server provides eight tools:
 - `locli_add_texts`
 - `locli_push`
 - `locli_pull`
+- `locli_delete_keys` (only keys that were never released)
+- `locli_community_suggestions`
+- `locli_community_review`
 
 Claude Code: install the plugin (skill and MCP server in one), or add only the MCP server:
 

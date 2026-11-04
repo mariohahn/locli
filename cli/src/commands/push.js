@@ -196,12 +196,12 @@ Keys are stable lower_snake_case identifiers with a feature prefix, e.g. account
 the text is the value. The prefix becomes the area in locli. Rename them in the app, then push again.
 Apps whose catalog is keyed by text on purpose (e.g. SwiftUI Text("…")) can pass --allow-text-keys.`, 2);
   }
-  // iOS and Android share one identifier and Android names can't hold dots: common.archived is common_archived.
+  // iOS and Android share one identifier and Android names can't hold dots: adminDashboard.location is admin_dashboard_location.
   const dotted = local.filter(({ target }) => target.platform === 'ios' || target.platform === 'android').flatMap(({ texts }) => texts.keys.filter(isDottedIdentifier));
   const newDotted = [...new Set(dotted.filter((key) => !remoteNames.has(key)))];
   if (newDotted.length) {
     throw new LocliError(`${plural(newDotted.length, 'new key')} contain${newDotted.length === 1 ? 's' : ''} dots: ${newDotted.slice(0, 5).join(', ')}${newDotted.length > 5 ? ' …' : ''}
-Keys used on iOS or Android use _ (common_archived). Run \`npx @locli/cli keys normalize --dry-run\`, then without
+Keys used on iOS or Android are lower_snake_case (adminDashboard.location → admin_dashboard_location). Run \`npx @locli/cli keys normalize --dry-run\`, then without
 --dry-run: it renames them in the String Catalog and the Swift code (and moves keys already in locli). Then push again.`, 2);
   }
   const oldDotted = new Set(dotted.filter((key) => remoteNames.has(key)));

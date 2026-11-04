@@ -1,3 +1,4 @@
+import { snakeName } from '../src/commands/keys.js';
 // Test helpers: temp dirs, a capturing context and a fake locli server (node:http) that
 // implements the endpoints the CLI uses with the server's add-only import semantics.
 import fs from 'node:fs';
@@ -153,12 +154,29 @@ export async function fakeServer(seed = {}) {
     if (sub === 'GET /guide') return state.guide ? send(200, state.guide) : send(404, { error: true, reason: 'no route' });
     if (sub === 'GET /guide/issues') return state.guide ? send(200, state.issues) : send(404, { error: true, reason: 'no route' });
     if (sub === 'PUT /guide') { state.guide = body; return send(200, body); }
+    if (sub === 'POST /keys/delete') {
+      // Like the server: keys with `released: 'NAME'` are refused, all or nothing.
+      const plan = { deleted: [], released: [], missing: [], applied: false };
+      for (const name of [...new Set(body.keys)].sort()) {
+        const key = state.keys.find((k) => k.key === name);
+        if (!key) plan.missing.push(name);
+        else if (key.released) plan.released.push({ key: name, release: key.released });
+        else plan.deleted.push({ key: name, platforms: key.platforms, values: state.values.filter((v) => v.translationKeyID === key.id).length });
+      }
+      if (body.apply && plan.released.length) return send(409, { error: true, reason: 'Released keys can\'t be deleted from the CLI.' });
+      if (body.apply) {
+        const names = new Set(plan.deleted.map((d) => d.key));
+        state.keys = state.keys.filter((k) => !names.has(k.key));
+        plan.applied = true;
+      }
+      return send(200, plan);
+    }
     if (sub === 'POST /keys/normalize') {
-      // Like the server: dotted iOS/Android identifiers → _, merged into an existing key (no conflict logic here).
+      // Like the server: dotted iOS/Android identifiers → snake_case, merged into an existing key (no conflict or camel-twin logic here).
       const plan = { renamed: [], merged: [], conflicts: [], applied: Boolean(body?.apply) };
       for (const key of [...state.keys].sort((a, b) => a.key.localeCompare(b.key))) {
         if (!/^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$/.test(key.key) || !key.platforms.some((p) => p === 'ios' || p === 'android')) continue;
-        const to = key.key.replaceAll('.', '_');
+        const to = snakeName(key.key);
         const target = state.keys.find((k) => k.key === to);
         if (target) {
           plan.merged.push({ from: key.key, into: to, platforms: key.platforms });

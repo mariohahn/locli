@@ -9,6 +9,7 @@ import { guide } from './commands/guide.js';
 import { areas } from './commands/areas.js';
 import { context } from './commands/context.js';
 import { community, review } from './commands/community.js';
+import { keys } from './commands/keys.js';
 import { openConfig } from './context.js';
 import { requireProject } from './remote.js';
 import { VERSION } from './version.js';
@@ -123,6 +124,18 @@ export const TOOLS = [
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
   },
   {
+    name: 'locli_delete_keys',
+    title: 'Delete unreleased keys',
+    description: 'Delete keys that no release ever contained: in locli (texts, translations, history) and in the app files from locli.json, so the next push does not add them back. Keys locli does not know are removed from the files only. If any key was already released, nothing is deleted: apps may still show it, so a project owner deletes it in the web editor. Warns about code that still uses a deleted key. Use for duplicates, typos and texts of a feature that was dropped; run with dryRun first and show the user the list.',
+    inputSchema: {
+      type: 'object',
+      properties: { keys: { type: 'array', items: { type: 'string' }, minItems: 1, description: 'Key names, e.g. ["adminDashboard_location"].' }, dryRun: { type: 'boolean', description: 'Only report what would be deleted.' } },
+      required: ['keys'],
+      additionalProperties: false,
+    },
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
+  },
+  {
     name: 'locli_community_suggestions',
     title: 'Community suggestions',
     description: 'Suggestions from the project\'s public community catalog (anyone can suggest translations of released texts, vote and discuss, without an account), the most voted first. Each has an id, key, language, source text, today\'s text in locli, the suggestion, score, votes and the public discussion. Read-only.',
@@ -180,6 +193,7 @@ export async function callTool(name, args = {}, overrides = {}) {
       for (const w of structured.warnings) lines.push(`warning: ${w}`);
     } else if (name === 'locli_push') structured = await push(ctx, { dryRun: args.dryRun, target: args.target });
     else if (name === 'locli_pull') structured = await pull(ctx, { draft: args.draft, target: args.target });
+    else if (name === 'locli_delete_keys') structured = await keys(ctx, { names: args.keys, dryRun: args.dryRun }, 'delete');
     else if (name === 'locli_community_suggestions') structured = await community(ctx, { json: true, locale: args.locale, status: args.status });
     else if (name === 'locli_community_review') {
       const { config, api } = openConfig(ctx, {});

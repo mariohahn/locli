@@ -167,4 +167,27 @@ export function writeJsonFile(file, messages, style) {
   return { written: writeFileIfChanged(file, content), changed };
 }
 
+/**
+ * Removes flat messages (`a.b` as a flat key or a nested path) and prunes objects left empty.
+ * @param {any} data @param {string[]} keys @returns {number} removed messages
+ */
+export function removeMessages(data, keys) {
+  let removed = 0;
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(data, key) && typeof data[key] === 'string') { delete data[key]; removed += 1; continue; }
+    const parts = key.split('.');
+    const trail = [data];
+    for (const part of parts.slice(0, -1)) {
+      const next = trail[trail.length - 1][part];
+      if (!next || typeof next !== 'object' || Array.isArray(next)) break;
+      trail.push(next);
+    }
+    if (trail.length !== parts.length || typeof trail[trail.length - 1][parts[parts.length - 1]] !== 'string') continue;
+    delete trail[trail.length - 1][parts[parts.length - 1]];
+    removed += 1;
+    for (let i = trail.length - 1; i > 0 && !Object.keys(trail[i]).length; i -= 1) delete trail[i - 1][parts[i - 1]];
+  }
+  return removed;
+}
+
 export { isNested };

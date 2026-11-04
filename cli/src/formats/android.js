@@ -310,4 +310,31 @@ export function mergeAndroidResources(source, entries) {
   return { content, warnings, changed };
 }
 
+/**
+ * Removes the named resources (and the comment right above each) with their lines; everything else
+ * stays byte-for-byte.
+ * @param {string} source @param {Set<string>} names
+ * @returns {{ content: string, removed: number }}
+ */
+export function removeAndroidResources(source, names) {
+  const { root } = parseAndroidResources(source);
+  /** @type {{ start: number, end: number }[]} */
+  const cuts = [];
+  root.children.forEach((node, index) => {
+    if (node.type !== 'element' || !names.has(node.attributes.name)) return;
+    let start = node.start;
+    const before = root.children.slice(0, index).filter((n) => !(n.type === 'text' && !n.text.trim())).pop();
+    if (before?.type === 'comment' && !source.slice(before.end, node.start).includes('\n\n')) start = before.start;
+    const lineStart = source.lastIndexOf('\n', start - 1) + 1;
+    if (/^[ \t]*$/.test(source.slice(lineStart, start))) start = lineStart;
+    let end = node.end;
+    const rest = /^[ \t]*\n/.exec(source.slice(end));
+    if (rest && start === lineStart) end += rest[0].length;
+    cuts.push({ start, end });
+  });
+  let content = source;
+  for (const cut of cuts.sort((a, b) => b.start - a.start)) content = content.slice(0, cut.start) + content.slice(cut.end);
+  return { content, removed: cuts.length };
+}
+
 export { CATEGORIES };
