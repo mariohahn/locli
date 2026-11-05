@@ -13,6 +13,9 @@ way texts reach apps.
 - Keys **created** by a push from a feature branch join that branch's feature, named
   from the branch (`feature/belege-import` → "Belege Import"; renameable in Localize).
   Existing keys keep their origin. New keys pushed after a merge reopen the feature.
+- The first push into a project without keys is the app's existing catalog, not a feature,
+  whatever branch is checked out. If an older CLI put a whole catalog into one feature, the
+  Features page says so; "Feature entfernen" keeps every text.
 - A push from `main`/`master` never creates a feature. It reports every catalog key;
   a feature becomes **merged** once its texts appear there.
 - Keys of a feature that the latest catalog no longer contains (branch while open,

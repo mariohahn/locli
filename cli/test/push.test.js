@@ -158,3 +158,20 @@ test('identifiers pass, text and sentences do not', () => {
   for (const key of ['account_login', 'account.login', 'receipt-count', 'Welcome']) assert.equal(isTextKey(key), false, key);
   for (const key of ['Hello world', 'Projekte', 'Plätze', '{name} entfernen', 'Save?', ' leading']) assert.equal(isTextKey(key), key !== 'Projekte', key);
 });
+
+test('the first push into an empty project assigns no feature, whatever branch is checked out', async () => {
+  const server = await fakeServer({ slug: 'app', defaultLocale: 'en', locales: ['en'], keys: [], values: [] });
+  try {
+    const root = tempDir();
+    writeFiles(root, {
+      'locli.json': { project: 'app', sourceLanguage: 'en', targets: [{ platform: 'ios', format: 'xcstrings', path: 'App/Localizable.xcstrings' }] },
+      'App/Localizable.xcstrings': { sourceLanguage: 'en', version: '1.1', strings: { account_login: { localizations: { en: unit('Sign in') } } } },
+    });
+    const ctx = testContext({ cwd: root, env: testEnv(server.url) });
+    const summary = await push(ctx, {});
+    assert.ok(server.calls('POST', '/translations/import').every((r) => r.body.branch === null));
+    assert.equal(summary.feature, null);
+    assert.equal(server.state.features.length, 0);
+    assert.ok(ctx.output.some((l) => l.includes('First push into an empty project: the texts belong to the app, not to a feature of feature/receipts.')));
+  } finally { await server.close(); }
+});

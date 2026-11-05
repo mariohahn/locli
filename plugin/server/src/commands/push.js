@@ -5,7 +5,7 @@ import { autoComment, isAutoComment } from '../usage.js';
 import { openConfig } from '../context.js';
 import { readTarget, selectTargets, describeTarget } from '../targets.js';
 import { requireProject, projectDetail, ensurePlatforms, ensureLocales, valueIndex, exportName, androidName, releasesURL, projectURL } from '../remote.js';
-import { currentBranch } from '../git.js';
+import { currentBranch, MAIN_BRANCHES } from '../git.js';
 import { ApiError } from '../http.js';
 import { LocliError, areaOf, normalizeLocale, plural } from '../util.js';
 import { isDottedIdentifier } from './keys.js';
@@ -185,6 +185,9 @@ export async function push(ctx, flags) {
     throw new LocliError(`Remote project uses a different source language (${detail.defaultLocale}, locli.json says ${config.sourceLanguage})`);
   }
   const branch = flags.branch || currentBranch(loaded.dir, ctx.env);
+  // The first push into an empty project is the app's existing catalog, not texts of the branch it runs on.
+  const firstPush = !detail.keys.length && Boolean(branch) && !MAIN_BRANCHES.includes(String(branch));
+  const featureBranch = firstPush ? null : branch;
   const platforms = targets.map((t) => t.platform);
   const missingPlatforms = platforms.filter((p) => !detail.platforms.includes(p));
   // Refuse new keys that are visible text before anything is written: they break areas, renames and review.
@@ -212,7 +215,7 @@ Keys used on iOS or Android are lower_snake_case (adminDashboard.location → ad
   const codes = [...new Set(local.flatMap((l) => Object.keys(l.texts.locales)))];
   const { ids: localeIDs, created: createdLocales } = await ensureLocales(api, detail, codes, { dryRun: flags.dryRun });
 
-  const plans = local.map(({ target, texts }) => ({ target, texts, plan: planTarget(target, texts, detail, localeIDs, branch) }));
+  const plans = local.map(({ target, texts }) => ({ target, texts, plan: planTarget(target, texts, detail, localeIDs, featureBranch) }));
   for (const { plan, target } of plans) for (const w of plan.warnings) ctx.warn(`${describeTarget(target)}: ${w}`);
 
   // The glossary is checked on the files, before anything is uploaded: push never overwrites, so a
@@ -305,7 +308,7 @@ Keys used on iOS or Android are lower_snake_case (adminDashboard.location → ad
         arrayKeys.set(item.key, created);
         summary.createdKeys += 1;
       }
-      await api.post(`/api/projects/${project.id}/translations/import`, { localeID: localeIDs[item.localeCode], platform: 'android', status: 'translated', values: { [item.key]: JSON.stringify(item.items) }, branch });
+      await api.post(`/api/projects/${project.id}/translations/import`, { localeID: localeIDs[item.localeCode], platform: 'android', status: 'translated', values: { [item.key]: JSON.stringify(item.items) }, branch: featureBranch });
       added += 1;
     }
     summary.addedValues += added;
@@ -383,6 +386,8 @@ Keys used on iOS or Android are lower_snake_case (adminDashboard.location → ad
   if (summary.feature) {
     const stale = summary.feature.staleKeyIDs?.length ?? 0;
     ctx.out(`Feature "${summary.feature.title}" (${branch})${stale ? `; ${plural(stale, 'text')} no longer in the code` : ''}`);
+  } else if (firstPush && !flags.dryRun) {
+    ctx.out(`First push into an empty project: the texts belong to the app, not to a feature of ${branch}.`);
   } else if (branch) ctx.out(`Branch: ${branch}`);
   for (const title of summary.merged) ctx.out(`Merged into ${branch}: feature "${title}"`);
   if (summary.assigned) ctx.out(`Assigned the platform to ${plural(summary.assigned, 'existing key')}.`);
